@@ -12,17 +12,18 @@ struct ContentView: View {
     @StateObject private var model = FilterMixer()
     @Namespace private var animation
     @State private var imageToPresent: ImageID?
+    @State private var position: UnitPoint = .center
     
     private func section(forActiveFilter filter: Filter) -> some View {
         Section {
             Button(filter.rawValue.capitalized, systemImage: "minus.circle.fill") {
                 model.filters.removeAll(of: filter)
             }
-            ForEach(filter.parameters) { parameter in
-                switch parameter {
-                case .slider(let title, let range):
-                    if let filterIndex = model.filters.firstIndex(of: filter),
-                       let operation = model.operations[filterIndex] as? BasicOperation {
+            if let filterIndex = model.filters.firstIndex(of: filter),
+               let operation = model.operations[filterIndex] as? BasicOperation {
+                ForEach(filter.parameters) { parameter in
+                    switch parameter {
+                    case .slider(let title, let range):
                         VStack(alignment: .leading) {
                             Text(title.camelCaseToReadableFormatted())
                                 .font(.caption)
@@ -39,22 +40,28 @@ struct ContentView: View {
                                 Text(range.upperBound.formatted())
                             }
                         }
-                    }
-                case .color(let title):
-                    if let filterIndex = model.filters.firstIndex(of: filter),
-                       let operation = model.operations[filterIndex] as? BasicOperation {
-                        VStack(alignment: .leading) {
-                            ColorPicker(title.camelCaseToReadableFormatted(), selection: Binding(get: {
-                                operation.uniformSettings[title].swiftUiColor
-                            }, set: {
-                                operation.uniformSettings[title] = $0.gpuImageColor
-                                model.processImage()
-                            }), supportsOpacity: true)
-                        }
-                    }
-                }
-            }
-        }
+                    case .color(let title):
+                        ColorPicker(title.camelCaseToReadableFormatted(), selection: Binding(get: {
+                            operation.uniformSettings[title].swiftUiColor
+                        }, set: {
+                            operation.uniformSettings[title] = $0.gpuImageColor
+                            model.processImage()
+                        }), supportsOpacity: true)
+                    case .position(let title):
+                        HStack {
+                            Text(title.camelCaseToReadableFormatted())
+                                .font(.caption)
+                            Spacer()
+                            PositionPicker(position: $position)
+                                .onChange(of: position) { _, newValue in
+                                    operation.uniformSettings[title] = newValue.toGpuImagePosition
+                                    model.processImage()
+                                }
+                        } // HStack
+                    } // switch
+                } // ForEach
+            } // if
+        } // Section
     }
     
     var body: some View {

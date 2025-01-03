@@ -23,7 +23,8 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
         case .amatorka:
             [.slider(title: "intensity", range: 0...1)]
         case .bulge:
-            [.slider(title: "radius", range: 0...1),
+            [.position(title: "center"),
+             .slider(title: "radius", range: 0...1),
              .slider(title: "scale", range: 0...1)]
         case .falseColor:
             [.color(title: "firstColor"), .color(title: "secondColor")]
