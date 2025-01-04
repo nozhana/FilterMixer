@@ -79,6 +79,8 @@ final class FilterMixer: ObservableObject {
                         operation.uniformSettings[key] = colorValue
                     } else if let positionValue = value as? Position {
                         operation.uniformSettings[key] = positionValue
+                    } else if let sizeValue = value as? Size {
+                        operation.uniformSettings[key] = sizeValue
                     }
                 }
             }
@@ -95,14 +97,17 @@ final class FilterMixer: ObservableObject {
             var parameterValues = [String: Any]()
             filter.parameters.forEach { parameter in
                 switch parameter {
-                case .slider(let title, _):
-                    let value: Float = operation.uniformSettings[title]
+                case .slider(let title, _, let customGetter, _):
+                    let value: Float = customGetter?(operation) ?? operation.uniformSettings[title]
                     parameterValues[title] = value
                 case .color(let title):
                     let value: Color = operation.uniformSettings[title]
                     parameterValues[title] = value
                 case .position(let title):
                     let value: Position = operation.uniformSettings[title]
+                    parameterValues[title] = value
+                case .size(let title):
+                    let value: Size = operation.uniformSettings[title]
                     parameterValues[title] = value
                 }
             }
