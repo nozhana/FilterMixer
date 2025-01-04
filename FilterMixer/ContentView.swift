@@ -7,6 +7,7 @@
 
 import GPUImage
 import SwiftUI
+import WheelSlider
 
 struct ContentView: View {
     @StateObject private var model = FilterMixer()
@@ -26,10 +27,9 @@ struct ContentView: View {
                     ForEach(filter.parameters) { parameter in
                         switch parameter {
                         case .slider(let title, let range, let customGetter, let customSetter):
-                            VStack(alignment: .leading) {
+                            HStack {
                                 Text(title.camelCaseToReadableFormatted())
-                                    .font(.caption)
-                                Slider(value: Binding(get: {
+                                WheelSlider(value: Binding(get: {
                                     if let customGetter {
                                         Double(customGetter(operation))
                                     } else {
@@ -42,14 +42,22 @@ struct ContentView: View {
                                         operation.uniformSettings[title] = Float($0)
                                     }
                                     model.processImage()
-                                }), in: range) {
-                                    Text(title.camelCaseToReadableFormatted())
-                                } minimumValueLabel: {
-                                    Text(range.lowerBound.formatted())
-                                } maximumValueLabel: {
-                                    Text(range.upperBound.formatted())
+                                }), in: range, stepCount: 50)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
+                                .offset(y: 6)
+                                .overlay(alignment: .bottom) {
+                                    Group {
+                                        if let customGetter {
+                                            Text(Double(customGetter(operation)).formatted())
+                                        } else {
+                                            Text(Double(operation.uniformSettings[title]).formatted())
+                                        }
+                                    }
+                                    .font(.caption2)
+                                    .offset(y: 12)
                                 }
-                            }
+                            } // HStack
                         case .color(let title):
                             ColorPicker(title.camelCaseToReadableFormatted(), selection: Binding(get: {
                                 operation.uniformSettings[title].swiftUiColor
@@ -81,31 +89,6 @@ struct ContentView: View {
                             } // HStack
                         } // switch
                     } // ForEach
-                } else if let operation = model.operations[filterIndex] as? OperationGroup {
-                    ForEach(filter.parameters) { parameter in
-                        switch parameter {
-                        case .slider(let title, let range, let customGetter, let customSetter):
-                            if let customGetter, let customSetter {
-                                VStack(alignment: .leading) {
-                                    Text(title.camelCaseToReadableFormatted())
-                                        .font(.caption)
-                                    Slider(value: Binding(get: {
-                                        Double(customGetter(operation))
-                                    }, set: {
-                                        customSetter(operation, Float($0))
-                                    })) {
-                                        Text(title.camelCaseToReadableFormatted())
-                                    } minimumValueLabel: {
-                                        Text(range.lowerBound.formatted())
-                                    } maximumValueLabel: {
-                                        Text(range.upperBound.formatted())
-                                    }
-                                }
-                            }
-                        default:
-                            EmptyView()
-                        }
-                    }
                 } // if
             } // if
         } // Section

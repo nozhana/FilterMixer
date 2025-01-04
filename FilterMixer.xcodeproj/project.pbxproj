@@ -7,7 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		31F412BB2D2360E70015198B /* GPUImage in Frameworks */ = {isa = PBXBuildFile; productRef = 31F412BA2D2360E70015198B /* GPUImage */; };
+		310A15D82D29DA9D006BB97F /* GPUImage in Frameworks */ = {isa = PBXBuildFile; productRef = 310A15D72D29DA9D006BB97F /* GPUImage */; };
+		310A16082D29DB41006BB97F /* WheelSlider in Frameworks */ = {isa = PBXBuildFile; productRef = 310A16072D29DB41006BB97F /* WheelSlider */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,7 +28,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				31F412BB2D2360E70015198B /* GPUImage in Frameworks */,
+				310A15D82D29DA9D006BB97F /* GPUImage in Frameworks */,
+				310A16082D29DB41006BB97F /* WheelSlider in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -70,7 +72,8 @@
 			);
 			name = FilterMixer;
 			packageProductDependencies = (
-				31F412BA2D2360E70015198B /* GPUImage */,
+				310A15D72D29DA9D006BB97F /* GPUImage */,
+				310A16072D29DB41006BB97F /* WheelSlider */,
 			);
 			productName = FilterMixer;
 			productReference = 31F412A42D235E4C0015198B /* FilterMixer.app */;
@@ -101,7 +104,8 @@
 			mainGroup = 31F4129B2D235E4C0015198B;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				31F412B92D2360E70015198B /* XCRemoteSwiftPackageReference "gpuimage3" */,
+				310A15D62D29DA9D006BB97F /* XCRemoteSwiftPackageReference "gpuimage3" */,
+				310A16092D29DB70006BB97F /* XCRemoteSwiftPackageReference "wheelslider" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 31F412A52D235E4C0015198B /* Products */;
@@ -335,9 +339,17 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		31F412B92D2360E70015198B /* XCRemoteSwiftPackageReference "gpuimage3" */ = {
+		310A15D62D29DA9D006BB97F /* XCRemoteSwiftPackageReference "gpuimage3" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/bradlarson/gpuimage3";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+		310A16092D29DB70006BB97F /* XCRemoteSwiftPackageReference "wheelslider" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/nozhana/wheelslider";
 			requirement = {
 				branch = main;
 				kind = branch;
@@ -346,10 +358,14 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		31F412BA2D2360E70015198B /* GPUImage */ = {
+		310A15D72D29DA9D006BB97F /* GPUImage */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 31F412B92D2360E70015198B /* XCRemoteSwiftPackageReference "gpuimage3" */;
+			package = 310A15D62D29DA9D006BB97F /* XCRemoteSwiftPackageReference "gpuimage3" */;
 			productName = GPUImage;
+		};
+		310A16072D29DB41006BB97F /* WheelSlider */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = WheelSlider;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

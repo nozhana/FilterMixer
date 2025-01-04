@@ -1,5 +1,5 @@
 {
-  "originHash" : "5aee325cd8e7f4e64a353f67b59b9535a92104bd3107c106f5d9d8a9ce9d8414",
+  "originHash" : "2423710b0f362c0d4a589156f216cc27eb5719080be6633ba045051fe1126953",
   "pins" : [
     {
       "identity" : "gpuimage3",
@@ -8,6 +8,15 @@
       "state" : {
         "branch" : "main",
         "revision" : "84466fc344e1220238c1c07e94e91207caaabe51"
+      }
+    },
+    {
+      "identity" : "wheelslider",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/nozhana/wheelslider",
+      "state" : {
+        "branch" : "main",
+        "revision" : "b97c6df5facfac979e0e671361b9b27ec1d554c5"
       }
     }
   ],
