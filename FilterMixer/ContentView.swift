@@ -174,7 +174,6 @@ struct ContentView: View {
                         }
                     }
             }
-            .frame(height: 250)
         }
     }
     
