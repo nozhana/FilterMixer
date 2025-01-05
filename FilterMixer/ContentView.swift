@@ -8,6 +8,7 @@
 import GPUImage
 import SwiftUI
 import WheelSlider
+import PhotosUI
 
 struct ContentView: View {
     @StateObject private var model = FilterMixer()
@@ -16,6 +17,7 @@ struct ContentView: View {
     @State private var position: UnitPoint = .center
     @State private var size: CGSize = .init(width: 0.5, height: 0.5)
     @State private var isPipEnabled = false
+    @State private var isShowingPhotosPicker = false
     
     private func section(forActiveFilter filter: Filter) -> some View {
         Section {
@@ -94,53 +96,113 @@ struct ContentView: View {
         } // Section
     }
     
+    private func loadSelection(_ pickerItem: PhotosPickerItem?) {
+        guard let pickerItem else { return }
+        pickerItem.loadTransferable(type: Data.self) { result in
+            switch result {
+            case .success(let data):
+                guard let data,
+                      let uiImage = UIImage(data: data) else { return }
+                model.originalImage = uiImage
+            case .failure(let error):
+                print("Failed to load photos picker item: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var headerView: some View {
+        if isPipEnabled {
+            ZStack(alignment: .topLeading) {
+                Image(uiImage: model.filteredImage)
+                    .resizable()
+                    .scaledToFit()
+                    .matchedTransitionSource(id: ImageID.filteredImage, in: animation)
+                    .matchedGeometryEffect(id: ImageID.filteredImage, in: animation)
+                    .onTapGesture {
+                        imageToPresent = .filteredImage
+                    }
+                    .contextMenu {
+                        Button("Save to photos", systemImage: "square.and.arrow.down.fill") {
+                            UIImageWriteToSavedPhotosAlbum(model.filteredImage, nil, nil, nil)
+                        }
+                    }
+                
+                Image(uiImage: model.originalImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxHeight: 80)
+                    .padding(6)
+                    .matchedTransitionSource(id: ImageID.originalImage, in: animation)
+                    .matchedGeometryEffect(id: ImageID.originalImage, in: animation)
+                    .onTapGesture {
+                        imageToPresent = .originalImage
+                    }
+                    .contextMenu {
+                        Button("Change photo", systemImage: "photo.fill") {
+                            isShowingPhotosPicker = true
+                        }
+                    }
+            }
+        } else {
+            HStack {
+                Image(uiImage: model.originalImage)
+                    .resizable()
+                    .scaledToFit()
+                    .matchedTransitionSource(id: ImageID.originalImage, in: animation)
+                    .matchedGeometryEffect(id: ImageID.originalImage, in: animation)
+                    .onTapGesture {
+                        imageToPresent = .originalImage
+                    }
+                    .contextMenu {
+                        Button("Change photo", systemImage: "photo.fill") {
+                            isShowingPhotosPicker = true
+                        }
+                    }
+                
+                Image(uiImage: model.filteredImage)
+                    .resizable()
+                    .scaledToFit()
+                    .matchedTransitionSource(id: ImageID.filteredImage, in: animation)
+                    .matchedGeometryEffect(id: ImageID.filteredImage, in: animation)
+                    .onTapGesture {
+                        imageToPresent = .filteredImage
+                    }
+                    .contextMenu {
+                        Button("Save to photos", systemImage: "square.and.arrow.down.fill") {
+                            UIImageWriteToSavedPhotosAlbum(model.filteredImage, nil, nil, nil)
+                        }
+                    }
+            }
+            .frame(height: 250)
+        }
+    }
+    
+    @ToolbarContentBuilder
+    private var toolbarItems: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button("Picture-in-picture", systemImage: isPipEnabled ? "pip.fill" : "pip") {
+                withAnimation(.snappy) {
+                    isPipEnabled.toggle()
+                }
+            }
+        }
+        
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu("Add Filters", systemImage: "plus.circle.fill") {
+                ForEach(Filter.allCases.filter { !model.filters.contains($0) }) { filter in
+                    Button(filter.stylizedName, systemImage: "plus.circle") {
+                        model.filters.append(filter)
+                    }
+                }
+            }
+        }
+    }
+    
     var body: some View {
         NavigationStack {
             VStack {
-                if isPipEnabled {
-                    ZStack(alignment: .topLeading) {
-                        Image(uiImage: model.filteredImage)
-                            .resizable()
-                            .scaledToFit()
-                            .matchedTransitionSource(id: ImageID.filteredImage, in: animation)
-                            .matchedGeometryEffect(id: ImageID.filteredImage, in: animation)
-                            .onTapGesture {
-                                imageToPresent = .filteredImage
-                            }
-                        
-                        Image(uiImage: model.originalImage)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxHeight: 80)
-                            .padding(6)
-                            .matchedTransitionSource(id: ImageID.originalImage, in: animation)
-                            .matchedGeometryEffect(id: ImageID.originalImage, in: animation)
-                            .onTapGesture {
-                                imageToPresent = .originalImage
-                            }
-                    }
-                } else {
-                    HStack {
-                        Image(uiImage: model.originalImage)
-                            .resizable()
-                            .scaledToFit()
-                            .matchedTransitionSource(id: ImageID.originalImage, in: animation)
-                            .matchedGeometryEffect(id: ImageID.originalImage, in: animation)
-                            .onTapGesture {
-                                imageToPresent = .originalImage
-                            }
-                        
-                        Image(uiImage: model.filteredImage)
-                            .resizable()
-                            .scaledToFit()
-                            .matchedTransitionSource(id: ImageID.filteredImage, in: animation)
-                            .matchedGeometryEffect(id: ImageID.filteredImage, in: animation)
-                            .onTapGesture {
-                                imageToPresent = .filteredImage
-                            }
-                    }
-                    .frame(height: 250)
-                }
+                headerView
                 
                 List(model.filters) { filter in
                     section(forActiveFilter: filter)
@@ -155,24 +217,9 @@ struct ContentView: View {
                     .scaledToFit()
                     .navigationTransition(.zoom(sourceID: imageId, in: animation))
             }
+            .photosPicker(isPresented: $isShowingPhotosPicker, selection: Binding(get: { nil }, set: { loadSelection($0) }), matching: .images)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Picture-in-picture", systemImage: isPipEnabled ? "pip.fill" : "pip") {
-                        withAnimation(.snappy) {
-                            isPipEnabled.toggle()
-                        }
-                    }
-                }
-                
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu("Add Filters", systemImage: "plus.circle.fill") {
-                        ForEach(Filter.allCases.filter { !model.filters.contains($0) }) { filter in
-                            Button(filter.stylizedName, systemImage: "plus.circle") {
-                                model.filters.append(filter)
-                            }
-                        }
-                    }
-                }
+                toolbarItems
             }
             .navigationTitle("Filter Mixer")
         }

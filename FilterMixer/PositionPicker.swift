@@ -18,16 +18,16 @@ struct PositionPicker: View {
                 
                 GridShape()
                     .stroke(lineWidth: 1)
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(.primary.opacity(0.25))
                 
                 Image(systemName: "plus")
                     .imageScale(.small)
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(.primary.opacity(0.25))
                 
                 Circle()
                     .fill(.blue)
                     .frame(width: 24, height: 24)
-                    .shadow(color: .blue.mix(with: .black, by: 0.5), radius: 4, y: 1)
+                    .shadow(color: .blue.mix(with: .black, by: 0.5).opacity(0.12), radius: 4, y: 1)
                     .position(CGPoint(x: position.x * geometry.size.width, y: position.y * geometry.size.height))
             } // ZStack
             .gesture(

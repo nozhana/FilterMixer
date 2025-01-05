@@ -30,12 +30,13 @@ struct SizePicker: View {
                         
                         GridShape()
                             .stroke(lineWidth: 1)
-                            .foregroundStyle(.white.opacity(0.5))
+                            .foregroundStyle(.primary.opacity(0.25))
                             .frame(width: 112, height: 112)
                         
                         Ellipse()
                             .fill(.blue)
                             .frame(width: geometry.size.width * size.width, height: geometry.size.height * size.height)
+                            .shadow(color: .blue.mix(with: .black, by: 0.5).opacity(0.12), radius: 4, y: 1)
                     } // ZStack
                     .clipShape(.rect(cornerRadius: 8))
                     .gesture(

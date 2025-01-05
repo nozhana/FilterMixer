@@ -39,7 +39,15 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
     case solarize
     case sphereRefraction
     case stretch
+    case swirl
+    case thresholdSketch
+    case thresholdSobelEdgeDetection
+    case tiltShift
+    case toon
+    case vibrance
     case vignette
+    case whiteBalance
+    case zoomBlur
     
     var stylizedName: String {
         switch self {
@@ -153,11 +161,38 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
              .slider(title: "refractiveIndex", range: 0...1)]
         case .stretch:
             [.position(title: "center")]
+        case .swirl:
+            [.slider(title: "radius", range: 0...1),
+             .slider(title: "angle", range: 0...(.pi)),
+             .position(title: "center")]
+        case .thresholdSketch:
+            [.slider(title: "edgeStrength", range: 0.1...4),
+             .slider(title: "threshold", range: 0...1)]
+        case .thresholdSobelEdgeDetection:
+            [.slider(title: "edgeStrength", range: 0.1...4),
+             .slider(title: "threshold", range: 0...1)]
+        case .tiltShift:
+            []
+        case .toon:
+            [.slider(title: "threshold", range: 0...1),
+             .slider(title: "quantizationLevels", range: 0...20)]
+        case .vibrance:
+            [.slider(title: "vibrance", range: 0...1)]
         case .vignette:
             [.position(title: "vignetteCenter"),
              .color(title: "vignetteColor"),
              .slider(title: "vignetteStart", range: 0...1),
              .slider(title: "vignetteEnd", range: 0...1)]
+        case .whiteBalance:
+            [.slider(title: "temperature", range: 3000...7000, customGetter: { operation in
+                (operation as! WhiteBalance).temperature
+            }, customSetter: { operation, value in
+                (operation as! WhiteBalance).temperature = value
+            }),
+             .slider(title: "tint", range: 0...1)]
+        case .zoomBlur:
+            [.slider(title: "size", range: 0...40),
+             .position(title: "center")]
         }
     }
     
@@ -223,8 +258,24 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
             SphereRefraction()
         case .stretch:
             StretchDistortion()
+        case .swirl:
+            SwirlDistortion()
+        case .thresholdSketch:
+            ThresholdSketchFilter()
+        case .thresholdSobelEdgeDetection:
+            ThresholdSobelEdgeDetection()
+        case .tiltShift:
+            TiltShift()
+        case .toon:
+            ToonFilter()
+        case .vibrance:
+            Vibrance()
         case .vignette:
             Vignette()
+        case .whiteBalance:
+            WhiteBalance()
+        case .zoomBlur:
+            ZoomBlur()
         }
     }
 }
