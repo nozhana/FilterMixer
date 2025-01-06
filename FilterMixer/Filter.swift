@@ -60,11 +60,11 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
     var parameters: [FilterParameter] {
         switch self {
         case .amatorka:
-            [.slider(title: "intensity", range: 0...1)]
+            [.slider(title: "intensity", range: 0...1, stepCount: 10)]
         case .bulge:
             [.position(title: "center"),
-             .slider(title: "radius", range: 0...1),
-             .slider(title: "scale", range: 0...1)]
+             .slider(title: "radius", range: 0...1, stepCount: 20),
+             .slider(title: "scale", range: 0...1, stepCount: 20)]
         case .falseColor:
             [.color(title: "firstColor"), .color(title: "secondColor")]
         case .gaussianBlur:
@@ -184,7 +184,7 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
              .slider(title: "vignetteStart", range: 0...1),
              .slider(title: "vignetteEnd", range: 0...1)]
         case .whiteBalance:
-            [.slider(title: "temperature", range: 3000...7000, customGetter: { operation in
+            [.slider(title: "temperature", range: 4000...6000, customGetter: { operation in
                 (operation as! WhiteBalance).temperature
             }, customSetter: { operation, value in
                 (operation as! WhiteBalance).temperature = value

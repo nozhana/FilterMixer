@@ -28,7 +28,7 @@ struct ContentView: View {
                 if let operation = model.operations[filterIndex] as? BasicOperation {
                     ForEach(filter.parameters) { parameter in
                         switch parameter {
-                        case .slider(let title, let range, let customGetter, let customSetter):
+                        case .slider(let title, let range, let stepCount, let customGetter, let customSetter):
                             HStack {
                                 Text(title.camelCaseToReadableFormatted())
                                 WheelSlider(value: Binding(get: {
@@ -44,7 +44,7 @@ struct ContentView: View {
                                         operation.uniformSettings[title] = Float($0)
                                     }
                                     model.processImage()
-                                }), in: range, stepCount: 50)
+                                }), in: range, stepCount: stepCount ?? 50)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 8)
                                 .offset(y: 6)
@@ -56,8 +56,9 @@ struct ContentView: View {
                                             Text(Double(operation.uniformSettings[title]).formatted())
                                         }
                                     }
-                                    .font(.caption2)
-                                    .offset(y: 12)
+                                    .font(.caption2.bold())
+                                    .foregroundStyle(.yellow.mix(with: .black, by: 0.25))
+                                    .offset(y: 6)
                                 }
                             } // HStack
                         case .color(let title):
@@ -70,7 +71,6 @@ struct ContentView: View {
                         case .position(let title):
                             HStack {
                                 Text(title.camelCaseToReadableFormatted())
-                                    .font(.caption)
                                 Spacer()
                                 PositionPicker(position: $position)
                                     .onChange(of: position) { _, newValue in
@@ -81,7 +81,6 @@ struct ContentView: View {
                         case .size(let title):
                             HStack {
                                 Text(title.camelCaseToReadableFormatted())
-                                    .font(.caption)
                                 Spacer()
                                 SizePicker(size: $size)
                                     .onChange(of: size) { _, newValue in
@@ -203,8 +202,17 @@ struct ContentView: View {
             VStack {
                 headerView
                 
-                List(model.filters) { filter in
-                    section(forActiveFilter: filter)
+                if model.filters.isEmpty {
+                    ContentUnavailableView("Add a filter to see the result.", systemImage: "plus.circle.dashed")
+                        .foregroundStyle(.gray)
+                } else {
+                    List(model.filters) { filter in
+                        section(forActiveFilter: filter)
+                            .listRowBackground(Color.primary.opacity(0.04))
+                            .listRowSeparator(.hidden)
+                            .listSectionSeparator(.hidden)
+                    }
+                    .scrollContentBackground(.hidden)
                 }
             }
             .padding()

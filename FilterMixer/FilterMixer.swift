@@ -97,7 +97,7 @@ final class FilterMixer: ObservableObject {
             var parameterValues = [String: Any]()
             filter.parameters.forEach { parameter in
                 switch parameter {
-                case .slider(let title, _, let customGetter, _):
+                case .slider(let title, _, _, let customGetter, _):
                     let value: Float = customGetter?(operation) ?? operation.uniformSettings[title]
                     parameterValues[title] = value
                 case .color(let title):
