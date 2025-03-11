@@ -9,18 +9,20 @@ import Foundation
 import GPUImage
 
 enum Filter: String, Identifiable, Hashable, CaseIterable {
-    case amatorka
     case bulge
+    case contrast
+    case exposure
     case falseColor
     case gaussianBlur
     case glassSphere
     case halftone
     case haze
+    case highlightAndShadowTint
     case iosBlur
     case kuwahara
+    case levelsAdjustment
     case luminance
     case luminanceThreshold
-    case missEtitake
     case monochrome
     case motionBlur
     case opacity
@@ -49,22 +51,108 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
     case whiteBalance
     case zoomBlur
     
+    // Basic lookup filters
+    case amatorka
+    case missEtitake
+    case softElegance
+    case twoStrip
+    case threeStrip
+    case bleachBypass
+    case candlelight
+    case crispWarm
+    case crispWinter
+    case dropBlues
+    case edgyAmber
+    case fallColors
+    case filmstock50
+    case foggyNight
+    case fujiEternaFuji3510
+    case fujiEternaKodak2395
+    case fujiF125Kodak2393
+    case fujiF125Kodak2395
+    case fujiReala500DKodak2393
+    case futuristicBleak
+    case horrorBlue
+    case kodak5205Fuji3510
+    case kodak5218Kodak2383
+    case kodak5218Kodak2395
+    case lateSunset
+    case moonlight
+    case nightFromDay
+    case softWarming
+    case tealOrangePlusContrast
+    case tensionGreen
+    
     var stylizedName: String {
         switch self {
         case .iosBlur: "iOS Blur"
         case .rgbAdjustment: "RGB Adjustment"
+        // Basic Lookup filters
+        case .filmstock50: "Filmstock 50"
+        case .fujiEternaFuji3510: "Fuji Eterna Fuji 3510"
+        case .fujiEternaKodak2395: "Fuji Eterna Kodak 2395"
+        case .fujiF125Kodak2393: "Fuji F125 Kodak 2393"
+        case .fujiF125Kodak2395: "Fuji F125 Kodak 2395"
+        case .fujiReala500DKodak2393: "Fuji Reala 500D Kodak 2393"
+        case .kodak5205Fuji3510: "Kodak 5205 Fuji 3510"
+        case .kodak5218Kodak2383: "Kodak 5218 Kodak 2383"
+        case .kodak5218Kodak2395: "Kodak 5218 Kodak 2395"
         default: rawValue.camelCaseToReadableFormatted()
         }
     }
     
+    var isBasicLookupFilter: Bool {
+        [.amatorka,
+         .missEtitake,
+         .softElegance,
+         .twoStrip,
+         .threeStrip,
+         .bleachBypass,
+         .candlelight,
+         .crispWarm,
+         .crispWinter,
+         .dropBlues,
+         .edgyAmber,
+         .fallColors,
+         .filmstock50,
+         .foggyNight,
+         .fujiEternaFuji3510,
+         .fujiEternaKodak2395,
+         .fujiF125Kodak2393,
+         .fujiF125Kodak2395,
+         .fujiReala500DKodak2393,
+         .futuristicBleak,
+         .horrorBlue,
+         .kodak5205Fuji3510,
+         .kodak5218Kodak2383,
+         .kodak5218Kodak2395,
+         .lateSunset,
+         .moonlight,
+         .nightFromDay,
+         .softWarming,
+         .tealOrangePlusContrast,
+         .tensionGreen]
+            .contains(self)
+    }
+    
+    static var genericFilters: [Filter] {
+        allCases.filter { !$0.isBasicLookupFilter }
+    }
+    
+    static var lookupFilters: [Filter] {
+        allCases.filter(\.isBasicLookupFilter)
+    }
+    
     var parameters: [FilterParameter] {
         switch self {
-        case .amatorka:
-            [.slider(title: "intensity", range: 0...1, stepCount: 10)]
         case .bulge:
             [.position(title: "center"),
              .slider(title: "radius", range: 0...1, stepCount: 20),
              .slider(title: "scale", range: 0...1, stepCount: 20)]
+        case .contrast:
+            [.slider(title: "contrast", range: 0...2)]
+        case .exposure:
+            [.slider(title: "exposure", range: -1...1)]
         case .falseColor:
             [.color(title: "firstColor"), .color(title: "secondColor")]
         case .gaussianBlur:
@@ -81,6 +169,11 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
         case .haze:
             [.slider(title: "hazeDistance", range: 0...1),
              .slider(title: "slope", range: 0...1)]
+        case .highlightAndShadowTint:
+            [.slider(title: "highlightTintIntensity", range: 0...1),
+             .color(title: "highlightTintColor"),
+             .slider(title: "shadowTintIntensity", range: 0...1),
+             .color(title: "shadowTintColor")]
         case .iosBlur:
             [.slider(title: "blurRadiusInPixels", range: 0.01...60, customGetter: { operation in
                 (operation as! iOSBlur)
@@ -101,12 +194,14 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
              })]
         case .kuwahara:
             [.slider(title: "radius", range: 1...10)]
+        case .levelsAdjustment:
+            [.color(title: "minimum"),
+             .color(title: "middle"),
+             .color(title: "maximum")]
         case .luminance:
             []
         case .luminanceThreshold:
             [.slider(title: "threshold", range: 0...1)]
-        case .missEtitake:
-            [.slider(title: "intensity", range: 0...1)]
         case .monochrome:
             [.color(title: "filterColor"),
              .slider(title: "intensity", range: 0...1)]
@@ -193,89 +288,84 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
         case .zoomBlur:
             [.slider(title: "size", range: 0...40),
              .position(title: "center")]
+        default: isBasicLookupFilter ? [.slider(title: "intensity", range: 0...1, stepCount: 50)] : []
         }
     }
     
     func makeOperation() -> ImageProcessingOperation {
         switch self {
-        case .amatorka:
-            AmatorkaFilter()
-        case .bulge:
-            BulgeDistortion()
-        case .falseColor:
-            FalseColor()
-        case .gaussianBlur:
-            GaussianBlur()
-        case .glassSphere:
-            GlassSphereRefraction()
-        case .halftone:
-            Halftone()
-        case .haze:
-            Haze()
-        case .iosBlur:
-            iOSBlur()
-        case .kuwahara:
-            KuwaharaFilter()
-        case .luminance:
-            Luminance()
-        case .luminanceThreshold:
-            LuminanceThreshold()
-        case .missEtitake:
-            MissEtikateFilter()
-        case .monochrome:
-            MonochromeFilter()
-        case .motionBlur:
-            MotionBlur()
-        case .opacity:
-            OpacityAdjustment()
-        case .pinch:
-            PinchDistortion()
-        case .pixellate:
-            Pixellate()
-        case .polarPixellate:
-            PolarPixellate()
-        case .polkaDot:
-            PolkaDot()
-        case .posterize:
-            Posterize()
-        case .prewittEdgeDetection:
-            PrewittEdgeDetection()
-        case .rgbAdjustment:
-            RGBAdjustment()
-        case .saturation:
-            SaturationAdjustment()
-        case .sepia:
-            SepiaToneFilter()
-        case .sharpness:
-            Sharpen()
-        case .sketch:
-            SketchFilter()
-        case .sobelEdgeDetection:
-            SobelEdgeDetection()
-        case .solarize:
-            Solarize()
-        case .sphereRefraction:
-            SphereRefraction()
-        case .stretch:
-            StretchDistortion()
-        case .swirl:
-            SwirlDistortion()
-        case .thresholdSketch:
-            ThresholdSketchFilter()
-        case .thresholdSobelEdgeDetection:
-            ThresholdSobelEdgeDetection()
-        case .tiltShift:
-            TiltShift()
-        case .toon:
-            ToonFilter()
-        case .vibrance:
-            Vibrance()
-        case .vignette:
-            Vignette()
-        case .whiteBalance:
-            WhiteBalance()
-        case .zoomBlur:
-            ZoomBlur()
+        case .bulge: BulgeDistortion()
+        case .contrast: ContrastAdjustment()
+        case .exposure: ExposureAdjustment()
+        case .falseColor: FalseColor()
+        case .gaussianBlur: GaussianBlur()
+        case .glassSphere: GlassSphereRefraction()
+        case .halftone: Halftone()
+        case .haze: Haze()
+        case .highlightAndShadowTint: HighlightAndShadowTint()
+        case .iosBlur: iOSBlur()
+        case .kuwahara: KuwaharaFilter()
+        case .levelsAdjustment: LevelsAdjustment()
+        case .luminance: Luminance()
+        case .luminanceThreshold: LuminanceThreshold()
+        case .monochrome: MonochromeFilter()
+        case .motionBlur: MotionBlur()
+        case .opacity: OpacityAdjustment()
+        case .pinch: PinchDistortion()
+        case .pixellate: Pixellate()
+        case .polarPixellate: PolarPixellate()
+        case .polkaDot: PolkaDot()
+        case .posterize: Posterize()
+        case .prewittEdgeDetection: PrewittEdgeDetection()
+        case .rgbAdjustment: RGBAdjustment()
+        case .saturation: SaturationAdjustment()
+        case .sepia: SepiaToneFilter()
+        case .sharpness: Sharpen()
+        case .sketch: SketchFilter()
+        case .sobelEdgeDetection: SobelEdgeDetection()
+        case .solarize: Solarize()
+        case .sphereRefraction: SphereRefraction()
+        case .stretch: StretchDistortion()
+        case .swirl: SwirlDistortion()
+        case .thresholdSketch: ThresholdSketchFilter()
+        case .thresholdSobelEdgeDetection: ThresholdSobelEdgeDetection()
+        case .tiltShift: TiltShift()
+        case .toon: ToonFilter()
+        case .vibrance: Vibrance()
+        case .vignette: Vignette()
+        case .whiteBalance: WhiteBalance()
+        case .zoomBlur: ZoomBlur()
+        // Basic lookup filters
+        case .amatorka: AmatorkaFilter()
+        case .missEtitake: MissEtikateFilter()
+        case .softElegance: SoftElegance()
+        case .twoStrip: LookupFilter("lookup_2strip")
+        case .threeStrip: LookupFilter("lookup_3strip")
+        case .bleachBypass: LookupFilter("lookup_bleach_bypass")
+        case .candlelight: LookupFilter("lookup_candlelight")
+        case .crispWarm: LookupFilter("lookup_crisp_warm")
+        case .crispWinter: LookupFilter("lookup_crisp_winter")
+        case .dropBlues: LookupFilter("lookup_drop_blues")
+        case .edgyAmber: LookupFilter("lookup_edgy_amber")
+        case .fallColors: LookupFilter("lookup_fall_colors")
+        case .filmstock50: LookupFilter("lookup_filmstock_50")
+        case .foggyNight: LookupFilter("lookup_foggy_night")
+        case .fujiEternaFuji3510: LookupFilter("lookup_fuji_eterna_fuji_3510")
+        case .fujiEternaKodak2395: LookupFilter("lookup_fuji_eterna_kodak_2395")
+        case .fujiF125Kodak2393: LookupFilter("lookup_fuji_f125_kodak_2393")
+        case .fujiF125Kodak2395: LookupFilter("lookup_fuji_f125_kodak_2395")
+        case .fujiReala500DKodak2393: LookupFilter("lookup_fuji_reala_500d_kodak_2393")
+        case .futuristicBleak: LookupFilter("lookup_futuristic_bleak")
+        case .horrorBlue: LookupFilter("lookup_horror_blue")
+        case .kodak5205Fuji3510: LookupFilter("lookup_kodak_5205_fuji_3510")
+        case .kodak5218Kodak2383: LookupFilter("lookup_kodak_5218_kodak_2383")
+        case .kodak5218Kodak2395: LookupFilter("lookup_kodak_5218_kodak_2395")
+        case .lateSunset: LookupFilter("lookup_late_sunset")
+        case .moonlight: LookupFilter("lookup_moonlight")
+        case .nightFromDay: LookupFilter("lookup_night_from_day")
+        case .softWarming: LookupFilter("lookup_soft_warming")
+        case .tealOrangePlusContrast: LookupFilter("lookup_teal_orange_plus_contrast")
+        case .tensionGreen: LookupFilter("lookup_tension_green")
         }
     }
 }

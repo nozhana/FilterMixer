@@ -7,7 +7,6 @@
 
 import GPUImage
 import SwiftUI
-import WheelSlider
 import PhotosUI
 
 struct ContentView: View {
@@ -18,6 +17,11 @@ struct ContentView: View {
     @State private var size: CGSize = .init(width: 0.5, height: 0.5)
     @State private var isPipEnabled = false
     @State private var isShowingPhotosPicker = false
+    @State private var query = ""
+    
+    var searchResults: [Filter] {
+        Filter.allCases.filter { !model.filters.contains($0) && $0.stylizedName.lowercased().hasPrefix(query.lowercased()) }
+    }
     
     private func section(forActiveFilter filter: Filter) -> some View {
         Section {
@@ -62,12 +66,12 @@ struct ContentView: View {
                                 }
                             } // HStack
                         case .color(let title):
-                            ColorPicker(title.camelCaseToReadableFormatted(), selection: Binding(get: {
-                                operation.uniformSettings[title].swiftUiColor
+                            SliderColorPicker(title.camelCaseToReadableFormatted(), color: Binding(get: {
+                                operation.uniformSettings[title]
                             }, set: {
-                                operation.uniformSettings[title] = $0.gpuImageColor
+                                operation.uniformSettings[title] = $0
                                 model.processImage()
-                            }), supportsOpacity: true)
+                            }))
                         case .position(let title):
                             HStack {
                                 Text(title.camelCaseToReadableFormatted())
@@ -188,7 +192,15 @@ struct ContentView: View {
         
         ToolbarItem(placement: .topBarTrailing) {
             Menu("Add Filters", systemImage: "plus.circle.fill") {
-                ForEach(Filter.allCases.filter { !model.filters.contains($0) }) { filter in
+                Menu("Lookup filters", systemImage: "paintpalette") {
+                    ForEach(Filter.lookupFilters.filter { !model.filters.contains($0) }) { filter in
+                        Button(filter.stylizedName, systemImage: "plus.circle") {
+                            model.filters.append(filter)
+                        }
+                    }
+                }
+                
+                ForEach(Filter.genericFilters.filter { !model.filters.contains($0) }) { filter in
                     Button(filter.stylizedName, systemImage: "plus.circle") {
                         model.filters.append(filter)
                     }
@@ -201,18 +213,45 @@ struct ContentView: View {
         NavigationStack {
             VStack {
                 headerView
-                
-                if model.filters.isEmpty {
-                    ContentUnavailableView("Add a filter to see the result.", systemImage: "plus.circle.dashed")
-                        .foregroundStyle(.gray)
-                } else {
-                    List(model.filters) { filter in
-                        section(forActiveFilter: filter)
-                            .listRowBackground(Color.primary.opacity(0.04))
-                            .listRowSeparator(.hidden)
-                            .listSectionSeparator(.hidden)
+                    .onDrop(of: [.image], isTargeted: nil) { providers in
+                        for provider in providers {
+                            _ = provider.loadTransferable(type: Data.self) { result in
+                                switch result {
+                                case .success(let data):
+                                    guard let uiImage = UIImage(data: data) else { return }
+                                    Task { @MainActor in
+                                        model.originalImage = uiImage
+                                    }
+                                case .failure(let error):
+                                    print("Failed to load photos picker item: \(error.localizedDescription)")
+                                }
+                            }
+                        }
+                        return true
                     }
-                    .scrollContentBackground(.hidden)
+                
+                if query.isEmpty {
+                    if model.filters.isEmpty {
+                        ContentUnavailableView("Add a filter to see the result.", systemImage: "plus.circle.dashed")
+                            .foregroundStyle(.gray)
+                    } else {
+                        List(model.filters) { filter in
+                            section(forActiveFilter: filter)
+                                .listRowBackground(Color.primary.opacity(0.04))
+                                .listRowSeparator(.hidden)
+                                .listSectionSeparator(.hidden)
+                        }
+                        .scrollContentBackground(.hidden)
+                    }
+                } else {
+                    List(searchResults) { filter in
+                        Button(filter.stylizedName, systemImage: "plus.circle") {
+                            model.filters.append(filter)
+                            withAnimation(.interactiveSpring) {
+                                query = ""
+                            }
+                        }
+                    }
                 }
             }
             .padding()
@@ -229,7 +268,8 @@ struct ContentView: View {
                 toolbarItems
             }
             .navigationTitle("Filter Mixer")
-        }
+        } // NavigationStack
+        .searchable(text: $query, prompt: "Look for a filter")
     }
 }
 
