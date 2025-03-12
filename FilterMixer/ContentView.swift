@@ -24,12 +24,14 @@ struct ContentView: View {
     }
     
     private func section(forActiveFilter filter: Filter) -> some View {
-        Section {
+        VStack {
             Button(filter.stylizedName, systemImage: "minus.circle.fill") {
                 model.filters.removeAll(of: filter)
             }
+            .buttonStyle(.bordered)
+            .frame(maxWidth: .infinity, alignment: .leading)
             if let filterIndex = model.filters.firstIndex(of: filter) {
-                if let operation = model.operations[filterIndex] as? BasicOperation {
+                if let operation = model.operations[safe: filterIndex] as? BasicOperation {
                     ForEach(filter.parameters) { parameter in
                         switch parameter {
                         case .slider(let title, let range, let stepCount, let customGetter, let customSetter):
@@ -96,7 +98,9 @@ struct ContentView: View {
                     } // ForEach
                 } // if
             } // if
-        } // Section
+        } // VStack
+        .safeAreaPadding()
+        .background(.ultraThinMaterial, in: .rect(cornerRadius: 12))
     }
     
     private func loadSelection(_ pickerItem: PhotosPickerItem?) {
@@ -235,12 +239,17 @@ struct ContentView: View {
                         ContentUnavailableView("Add a filter to see the result.", systemImage: "plus.circle.dashed")
                             .foregroundStyle(.gray)
                     } else {
-                        List(model.filters) { filter in
-                            section(forActiveFilter: filter)
-                                .listRowBackground(Color.primary.opacity(0.04))
-                                .listRowSeparator(.hidden)
-                                .listSectionSeparator(.hidden)
+                        List {
+                            ForEach(model.filters) { filter in
+                                section(forActiveFilter: filter)
+                            }
+                            .onMove { fromOffsets, toOffset in
+                                model.filters.move(fromOffsets: fromOffsets, toOffset: toOffset)
+                            }
                         }
+                        .listRowBackground(Color.primary.opacity(0.04))
+                        .listRowSeparator(.hidden)
+                        .listSectionSeparator(.hidden)
                         .scrollContentBackground(.hidden)
                     }
                 } else {
@@ -252,6 +261,7 @@ struct ContentView: View {
                             }
                         }
                     }
+                    .scrollContentBackground(.hidden)
                 }
             }
             .padding()

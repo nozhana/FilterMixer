@@ -9,6 +9,7 @@ import Foundation
 import GPUImage
 
 enum Filter: String, Identifiable, Hashable, CaseIterable {
+    case adaptiveThreshold
     case bulge
     case contrast
     case exposure
@@ -145,6 +146,10 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
     
     var parameters: [FilterParameter] {
         switch self {
+        case .adaptiveThreshold:
+            [.slider(title: "blurRadiusInPixels", range: 1...30, stepCount: 60,
+                     customGetter: { ($0 as? AdaptiveThreshold)?.blurRadiusInPixels ?? 2 },
+                     customSetter: { ($0 as? AdaptiveThreshold)?.blurRadiusInPixels = $1 })]
         case .bulge:
             [.position(title: "center"),
              .slider(title: "radius", range: 0...1, stepCount: 20),
@@ -294,6 +299,7 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
     
     func makeOperation() -> ImageProcessingOperation {
         switch self {
+        case .adaptiveThreshold: AdaptiveThreshold()
         case .bulge: BulgeDistortion()
         case .contrast: ContrastAdjustment()
         case .exposure: ExposureAdjustment()

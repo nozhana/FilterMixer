@@ -50,7 +50,7 @@ final class FilterMixer: ObservableObject {
         saveRepresentation()
     }
     
-    private func configurePipeline() {
+    func configurePipeline() {
         operationGroup?.removeAllTargets()
         operationGroup = OperationGroup()
         operations.forEach { $0.removeAllTargets() }
@@ -70,8 +70,7 @@ final class FilterMixer: ObservableObject {
         guard let operationRepresentation else { return }
         operationRepresentation.items.forEach { item in
             if let filterIndex = filters.firstIndex(of: item.filter),
-               operations.count > filterIndex,
-               let operation = operations[filterIndex] as? BasicOperation {
+               let operation = operations[safe: filterIndex] as? BasicOperation {
                 item.parameterValues.forEach { key, value in
                     if let floatValue = value as? Float {
                         operation.uniformSettings[key] = floatValue
@@ -91,9 +90,8 @@ final class FilterMixer: ObservableObject {
         var items: [OperationRepresentation.Item] = []
         
         filters.indices.forEach { index in
-            guard operations.count > index else { return }
-            let filter = filters[index]
-            guard let operation = operations[index] as? BasicOperation else { return }
+            guard let filter = filters[safe: index],
+                  let operation = operations[safe: index] as? BasicOperation else { return }
             var parameterValues = [String: Any]()
             filter.parameters.forEach { parameter in
                 switch parameter {
