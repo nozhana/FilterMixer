@@ -84,6 +84,10 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
     case tealOrangePlusContrast
     case tensionGreen
     
+    // Custom lookups
+    case oldPhoto1
+    case oldPhoto15
+    
     var stylizedName: String {
         switch self {
         case .iosBlur: "iOS Blur"
@@ -98,6 +102,8 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
         case .kodak5205Fuji3510: "Kodak 5205 Fuji 3510"
         case .kodak5218Kodak2383: "Kodak 5218 Kodak 2383"
         case .kodak5218Kodak2395: "Kodak 5218 Kodak 2395"
+        case .oldPhoto1: "Old Photo 1"
+        case .oldPhoto15: "Old Photo 15"
         default: rawValue.camelCaseToReadableFormatted()
         }
     }
@@ -132,7 +138,9 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
          .nightFromDay,
          .softWarming,
          .tealOrangePlusContrast,
-         .tensionGreen]
+         .tensionGreen,
+         .oldPhoto1,
+         .oldPhoto15]
             .contains(self)
     }
     
@@ -372,6 +380,8 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
         case .softWarming: LookupFilter("lookup_soft_warming")
         case .tealOrangePlusContrast: LookupFilter("lookup_teal_orange_plus_contrast")
         case .tensionGreen: LookupFilter("lookup_tension_green")
+        case .oldPhoto1: LookupFilter("lookup_old_photo_1")
+        case .oldPhoto15: LookupFilter("lookup_old_photo_15")
         }
     }
 }

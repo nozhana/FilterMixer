@@ -36,9 +36,9 @@ struct SliderColorPicker: View {
                 }
             }
         }
-        .safeAreaPadding(.horizontal, 12)
-        .safeAreaPadding(.vertical, 8)
-        .background(RoundedRectangle(cornerRadius: 12).strokeBorder(.tertiary, style: .init(lineWidth: 1, dash: [8, 12])))
+        .safeAreaPadding(.horizontal, 16)
+        .safeAreaPadding(.vertical, 12)
+        .background(RoundedRectangle(cornerRadius: 12).strokeBorder(.tertiary, lineWidth: 1))
     }
 }
 
