@@ -194,6 +194,12 @@ struct ContentView: View {
             }
         }
         
+        if let representation = model.operationRepresentation {
+            ToolbarItem(placement: .topBarTrailing) {
+                ShareLink(item: representation.description)
+            }
+        }
+        
         ToolbarItem(placement: .topBarTrailing) {
             Menu("Add Filters", systemImage: "plus.circle.fill") {
                 Menu("Lookup filters", systemImage: "paintpalette") {

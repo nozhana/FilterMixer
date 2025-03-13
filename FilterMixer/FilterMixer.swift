@@ -24,7 +24,7 @@ final class FilterMixer: ObservableObject {
         }
     }
     
-    private var operationRepresentation: OperationRepresentation?
+    private(set) var operationRepresentation: OperationRepresentation?
     
     private var inputImage: PictureInput?
     private lazy var outputImage = {
@@ -142,11 +142,41 @@ func -->> <T: ImageConsumer>(lhs: ImageSource, rhs: T) -> T {
     return rhs
 }
 
-struct OperationRepresentation {
-    struct Item {
+struct OperationRepresentation: CustomStringConvertible {
+    struct Item: CustomStringConvertible {
         var filter: Filter
         var parameterValues: [String: Any]
+        
+        var description: String {
+            "- \(filter.stylizedName)\n"
+            + parameterValues
+                .map { "\($0.key.camelCaseToReadableFormatted()): \($0.value)"}
+                .joined(separator: "\n")
+        }
     }
     
     let items: [Item]
+    
+    var description: String {
+        "Operation Representation\n\n"
+        + items.enumerated().map { String($0.offset + 1) + $0.element.description }.joined(separator: "\n\n")
+    }
+}
+
+extension Size: @retroactive CustomStringConvertible {
+    public var description: String {
+        "(w: \(width), h: \(height))"
+    }
+}
+
+extension Position: @retroactive CustomStringConvertible {
+    public var description: String {
+        "(x: \(x), y: \(y)" + (z == nil ? ")" : ", z: \(z!))")
+    }
+}
+
+extension GPUImage.Color: @retroactive CustomStringConvertible {
+    public var description: String {
+        "(r: \(redComponent), g: \(greenComponent), b: \(blueComponent), a: \(alphaComponent))"
+    }
 }
