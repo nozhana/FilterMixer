@@ -8,7 +8,7 @@
 import Foundation
 import GPUImage
 
-enum Filter: String, Identifiable, Hashable, CaseIterable {
+enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
     case adaptiveThreshold
     case bulge
     case contrast

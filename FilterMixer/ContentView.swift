@@ -19,8 +19,10 @@ struct ContentView: View {
     @State private var isShowingPhotosPicker = false
     @State private var query = ""
     
+    @Defaults(\.representations) var representations
+    
     var searchResults: [Filter] {
-        Filter.allCases.filter { !model.filters.contains($0) && $0.stylizedName.lowercased().hasPrefix(query.lowercased()) }
+        Filter.allCases.filter { !model.filters.contains($0) && $0.stylizedName.lowercased().contains(query.lowercased()) }
     }
     
     private func section(forActiveFilter filter: Filter) -> some View {
@@ -194,7 +196,42 @@ struct ContentView: View {
             }
         }
         
-        if let representation = model.operationRepresentation {
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu("Representations", systemImage: "archivebox") {
+                ForEach(representations.enumerated().map(\.self), id: \.offset) { (offset, representation) in
+                    Menu("Rep. \(offset + 1)") {
+                        Menu(representation.items.count ~~ "filter", systemImage: "camera.filters") {
+                            ForEach(representation.items.map(\.filter)) { filter in
+                                Text(filter.stylizedName)
+                            }
+                        }
+                        Divider()
+                        Button("Restore", systemImage: "arrow.circlepath") {
+                            model.restoreRepresentation(atIndex: offset)
+                        }
+                        Button("Delete", systemImage: "trash", role: .destructive) {
+                            representations.remove(at: offset)
+                        }
+                    }
+                }
+                
+                if !representations.isEmpty {
+                    Button("Clear all", systemImage: "trash.fill", role: .destructive) {
+                        representations.removeAll()
+                    }
+                }
+                
+                if !model.filters.isEmpty,
+                   let representation = model.operationRepresentation {
+                    Button("Save current stack", systemImage: "square.and.arrow.down") {
+                        representations.append(representation)
+                    }
+                }
+            }
+        }
+        
+        if !model.filters.isEmpty,
+           let representation = model.operationRepresentation {
             ToolbarItem(placement: .topBarTrailing) {
                 ShareLink(item: representation.description)
             }
@@ -285,7 +322,21 @@ struct ContentView: View {
             }
             .navigationTitle("Filter Mixer")
         } // NavigationStack
-        .searchable(text: $query, prompt: "Look for a filter")
+        .searchable(text: $query, prompt: "Look for a filter") {
+            ForEach(searchResults) { result in
+                Text(result.stylizedName).font(.caption)
+                    .searchCompletion(result.stylizedName)
+            }
+        }
+        .submitLabel(.done)
+        .onSubmit(of: .search) {
+            if let firstResult = searchResults.first {
+                model.filters.append(firstResult)
+                withAnimation(.interactiveSpring) {
+                    query = ""
+                }
+            }
+        }
     }
 }
 
