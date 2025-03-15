@@ -202,8 +202,45 @@ struct OperationRepresentation: CustomStringConvertible, Codable {
     let items: [Item]
     
     var description: String {
-        "Operation Representation\n\n"
-        + items.enumerated().map { String($0.offset + 1) + $0.element.description }.joined(separator: "\n\n")
+        items.enumerated().map { String($0.offset + 1) + $0.element.description }.joined(separator: "\n\n")
+    }
+    
+    var lookupImage: UIImage {
+        let lookup = UIImage(named: "lookup")!
+        let ops = items.map(\.filter).map { $0.makeOperation() }
+        for (item, operation) in zip(items, ops) {
+            for parameter in item.filter.parameters {
+                switch parameter {
+                case .slider(let title, _, _, _, let customSetter):
+                    if let parameterValue = item.parameterValues[title],
+                       case .float(let float) = parameterValue {
+                        if let customSetter {
+                            customSetter(operation, float)
+                        } else if let operation = operation as? BasicOperation {
+                            operation.uniformSettings[title] = float
+                        }
+                    }
+                case .color(let title, _, let setter):
+                    if let parameterValue = item.parameterValues[title],
+                       case .color(let color) = parameterValue {
+                        setter(operation, color)
+                    }
+                case .position(let title, _, let setter):
+                    if let parameterValue = item.parameterValues[title],
+                       case .position(let position) = parameterValue {
+                        setter(operation, position)
+                    }
+                case .size(let title, _, let setter):
+                    if let parameterValue = item.parameterValues[title],
+                       case .size(let size) = parameterValue {
+                        setter(operation, size)
+                    }
+                }
+            }
+        }
+        
+        let filtered = lookup.filterWithOperationsSynchronously(ops)
+        return filtered
     }
 }
 
