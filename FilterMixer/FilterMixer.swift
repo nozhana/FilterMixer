@@ -66,9 +66,9 @@ final class FilterMixer: ObservableObject {
         cacheRepresentation()
     }
     
-    func restoreRepresentation(atIndex index: Int) {
+    func restoreRepresentation(withName name: String) {
         let representations = Defaults[\.representations]
-        guard let representation = representations[safe: index] else { return }
+        guard let representation = representations[name] else { return }
         operationRepresentation = representation
         filters = representation.items.map(\.filter)
     }
@@ -89,20 +89,20 @@ final class FilterMixer: ObservableObject {
                                 operation.uniformSettings[title] = float
                             }
                         }
-                    case .position(let title):
+                    case .position(let title, _, let setter):
                         if let value = item.parameterValues[title],
                            case .position(let position) = value {
-                            operation.uniformSettings[title] = position
+                            setter(operation, position)
                         }
-                    case .size(let title):
+                    case .size(let title, _, let setter):
                         if let value = item.parameterValues[title],
                            case .size(let size) = value {
-                            operation.uniformSettings[title] = size
+                            setter(operation, size)
                         }
-                    case .color(let title):
+                    case .color(let title, _, let setter):
                         if let value = item.parameterValues[title],
                            case .color(let color) = value {
-                            operation.uniformSettings[title] = color
+                            setter(operation, color)
                         }
                     }
                 }
@@ -120,17 +120,17 @@ final class FilterMixer: ObservableObject {
             filter.parameters.forEach { parameter in
                 switch parameter {
                 case .slider(let title, _, _, let customGetter, _):
-                    let value: Float = customGetter?(operation) ?? operation.uniformSettings[title]
-                    parameterValues[title] = .float(value)
-                case .color(let title):
-                    let value: Color = operation.uniformSettings[title]
-                    parameterValues[title] = .color(value)
-                case .position(let title):
-                    let value: Position = operation.uniformSettings[title]
-                    parameterValues[title] = .position(value)
-                case .size(let title):
-                    let value: Size = operation.uniformSettings[title]
-                    parameterValues[title] = .size(value)
+                    let float = customGetter?(operation) ?? operation.uniformSettings[title]
+                    parameterValues[title] = .float(float)
+                case .color(let title, let getter, _):
+                    let color = getter(operation)
+                    parameterValues[title] = .color(color)
+                case .position(let title, let getter, _):
+                    let position = getter(operation)
+                    parameterValues[title] = .position(position)
+                case .size(let title, let getter, _):
+                    let size = getter(operation)
+                    parameterValues[title] = .size(size)
                 }
             }
             let item = OperationRepresentation.Item(filter: filter, parameterValues: parameterValues)
@@ -289,7 +289,7 @@ extension GPUImage.Color: @retroactive Codable {
 }
 
 extension DefaultsContainer {
-    var representations: [OperationRepresentation] {
-        []
+    var representations: [String: OperationRepresentation] {
+        [:]
     }
 }

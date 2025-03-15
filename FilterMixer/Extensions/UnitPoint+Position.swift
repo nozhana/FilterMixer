@@ -17,6 +17,6 @@ extension UnitPoint {
 
 extension Position {
     var toUnitPoint: UnitPoint {
-        UnitPoint(x: CGFloat(y), y: CGFloat(y))
+        UnitPoint(x: CGFloat(x), y: CGFloat(y))
     }
 }

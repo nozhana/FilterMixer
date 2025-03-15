@@ -13,10 +13,10 @@ struct ContentView: View {
     @StateObject private var model = FilterMixer()
     @Namespace private var animation
     @State private var imageToPresent: ImageID?
-    @State private var position: UnitPoint = .center
-    @State private var size: CGSize = .init(width: 0.5, height: 0.5)
     @State private var isPipEnabled = false
     @State private var isShowingPhotosPicker = false
+    @State private var isShowingNewRepresentationAlert = false
+    @State private var newRepresentationName = ""
     @State private var query = ""
     
     @Defaults(\.representations) var representations
@@ -81,32 +81,34 @@ struct ContentView: View {
                                     .offset(y: 6)
                                 }
                             } // HStack
-                        case .color(let title):
+                        case .color(let title, let getter, let setter):
                             SliderColorPicker(title.camelCaseToReadableFormatted(), color: Binding(get: {
-                                operation.uniformSettings[title]
+                                getter(operation)
                             }, set: {
-                                operation.uniformSettings[title] = $0
+                                setter(operation, $0)
                                 model.processImage()
                             }))
-                        case .position(let title):
+                        case .position(let title, let getter, let setter):
                             HStack {
                                 Text(title.camelCaseToReadableFormatted())
                                 Spacer()
-                                PositionPicker(position: $position)
-                                    .onChange(of: position) { _, newValue in
-                                        operation.uniformSettings[title] = newValue.toGpuImagePosition
-                                        model.processImage()
-                                    }
+                                PositionPicker(position: Binding(get: {
+                                    getter(operation).toUnitPoint
+                                }, set: {
+                                    setter(operation, $0.toGpuImagePosition)
+                                    model.processImage()
+                                }))
                             } // HStack
-                        case .size(let title):
+                        case .size(let title, let getter, let setter):
                             HStack {
                                 Text(title.camelCaseToReadableFormatted())
                                 Spacer()
-                                SizePicker(size: $size)
-                                    .onChange(of: size) { _, newValue in
-                                        operation.uniformSettings[title] = newValue.toGpuImageSize
-                                        model.processImage()
-                                    }
+                                SizePicker(size: Binding(get: {
+                                    getter(operation).toCgSize
+                                }, set: {
+                                    setter(operation, $0.toGpuImageSize)
+                                    model.processImage()
+                                }))
                             } // HStack
                         } // switch
                     } // ForEach
@@ -208,8 +210,8 @@ struct ContentView: View {
         
         ToolbarItem(placement: .topBarTrailing) {
             Menu("Representations", systemImage: "archivebox") {
-                ForEach(representations.enumerated().map(\.self), id: \.offset) { (offset, representation) in
-                    Menu("Rep. \(offset + 1)") {
+                ForEach(representations.map(\.self), id: \.key) { (key, representation) in
+                    Menu(key) {
                         Menu(representation.items.count ~~ "filter", systemImage: "camera.filters") {
                             ForEach(representation.items.map(\.filter)) { filter in
                                 Text(filter.stylizedName)
@@ -217,10 +219,10 @@ struct ContentView: View {
                         }
                         Divider()
                         Button("Restore", systemImage: "arrow.circlepath") {
-                            model.restoreRepresentation(atIndex: offset)
+                            model.restoreRepresentation(withName: key)
                         }
                         Button("Delete", systemImage: "trash", role: .destructive) {
-                            representations.remove(at: offset)
+                            representations.removeValue(forKey: key)
                         }
                     }
                 }
@@ -231,10 +233,9 @@ struct ContentView: View {
                     }
                 }
                 
-                if !model.filters.isEmpty,
-                   let representation = model.operationRepresentation {
+                if !model.filters.isEmpty {
                     Button("Save current stack", systemImage: "square.and.arrow.down") {
-                        representations.append(representation)
+                        isShowingNewRepresentationAlert = true
                     }
                 }
                 
@@ -242,6 +243,18 @@ struct ContentView: View {
                     Label("Choose a filter to get started.", systemImage: "camera.filters")
                         .foregroundStyle(.secondary)
                 }
+            }
+            .alert("New filter stack", isPresented: $isShowingNewRepresentationAlert) {
+                TextField("My filter stack", text: $newRepresentationName)
+                Button("Cancel", role: .cancel) {}
+                if let representation = model.operationRepresentation {
+                    Button("Save") {
+                        guard !newRepresentationName.isEmpty else { return }
+                        representations[newRepresentationName] = representation
+                    }
+                }
+            } message: {
+                Text("Choose a name for your new filter stack.")
             }
         }
         

@@ -13,3 +13,9 @@ extension CGSize {
         Size(width: Float(width), height: Float(height))
     }
 }
+
+extension Size {
+    var toCgSize: CGSize {
+        .init(width: CGFloat(width), height: CGFloat(height))
+    }
+}
