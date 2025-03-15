@@ -25,98 +25,6 @@ struct ContentView: View {
         Filter.allCases.filter { !model.filters.contains($0) && $0.stylizedName.lowercased().contains(query.lowercased()) }
     }
     
-    private func section(forActiveFilter filter: Filter) -> some View {
-        VStack {
-            HStack(alignment: .top) {
-                Button(filter.stylizedName, systemImage: "minus.circle.fill") {
-                    model.filters.removeAll(of: filter)
-                }
-                .buttonStyle(.bordered)
-                
-                Spacer()
-                
-                let filterIndex = model.filters.firstIndex(of: filter) ?? 0
-                Label("Layer \(filterIndex + 1)", systemImage: "square.3.layers.3d")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .safeAreaPadding(.vertical, 8)
-                    .safeAreaPadding(.horizontal, 10)
-                    .background(.thinMaterial, in: .rect(cornerRadius: 10))
-            } // HStack
-            
-            if let filterIndex = model.filters.firstIndex(of: filter) {
-                if let operation = model.operations[safe: filterIndex] as? BasicOperation {
-                    ForEach(filter.parameters) { parameter in
-                        switch parameter {
-                        case .slider(let title, let range, let stepCount, let customGetter, let customSetter):
-                            HStack {
-                                Text(title.camelCaseToReadableFormatted())
-                                WheelSlider(value: Binding(get: {
-                                    if let customGetter {
-                                        Double(customGetter(operation))
-                                    } else {
-                                        Double(operation.uniformSettings[title])
-                                    }
-                                }, set: {
-                                    if let customSetter {
-                                        customSetter(operation, Float($0))
-                                    } else {
-                                        operation.uniformSettings[title] = Float($0)
-                                    }
-                                    model.processImage()
-                                }), in: range, stepCount: stepCount ?? 50)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 8)
-                                .offset(y: 6)
-                                .overlay(alignment: .bottom) {
-                                    Group {
-                                        if let customGetter {
-                                            Text(Double(customGetter(operation)).formatted())
-                                        } else {
-                                            Text(Double(operation.uniformSettings[title]).formatted())
-                                        }
-                                    }
-                                    .font(.caption2.bold())
-                                    .foregroundStyle(.yellow.mix(with: .black, by: 0.25))
-                                    .offset(y: 6)
-                                }
-                            } // HStack
-                        case .color(let title, let getter, let setter):
-                            SliderColorPicker(title.camelCaseToReadableFormatted(), color: Binding(get: {
-                                getter(operation)
-                            }, set: {
-                                setter(operation, $0)
-                                model.processImage()
-                            }))
-                        case .position(let title, let getter, let setter):
-                            HStack {
-                                Text(title.camelCaseToReadableFormatted())
-                                Spacer()
-                                PositionPicker(position: Binding(get: {
-                                    getter(operation).toUnitPoint
-                                }, set: {
-                                    setter(operation, $0.toGpuImagePosition)
-                                    model.processImage()
-                                }))
-                            } // HStack
-                        case .size(let title, let getter, let setter):
-                            HStack {
-                                Text(title.camelCaseToReadableFormatted())
-                                Spacer()
-                                SizePicker(size: Binding(get: {
-                                    getter(operation).toCgSize
-                                }, set: {
-                                    setter(operation, $0.toGpuImageSize)
-                                    model.processImage()
-                                }))
-                            } // HStack
-                        } // switch
-                    } // ForEach
-                } // if
-            } // if
-        } // VStack
-    }
-    
     private func loadSelection(_ pickerItem: PhotosPickerItem?) {
         guard let pickerItem else { return }
         pickerItem.loadTransferable(type: Data.self) { result in
@@ -180,6 +88,7 @@ struct ContentView: View {
                             isShowingPhotosPicker = true
                         }
                     }
+                    .zIndex(1)
                 
                 Image(uiImage: model.filteredImage)
                     .resizable()
@@ -194,6 +103,7 @@ struct ContentView: View {
                             UIImageWriteToSavedPhotosAlbum(model.filteredImage, nil, nil, nil)
                         }
                     }
+                    .zIndex(0)
             }
         }
     }
@@ -313,7 +223,8 @@ struct ContentView: View {
                     } else {
                         List {
                             ForEach(model.filters) { filter in
-                                section(forActiveFilter: filter)
+                                FilterSectionView(filter: filter)
+                                    .environmentObject(model)
                             }
                             .onMove { fromOffsets, toOffset in
                                 model.filters.move(fromOffsets: fromOffsets, toOffset: toOffset)

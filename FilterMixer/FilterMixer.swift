@@ -116,23 +116,24 @@ final class FilterMixer: ObservableObject {
         filters.indices.forEach { index in
             guard let filter = filters[safe: index],
                   let operation = operations[safe: index] as? BasicOperation else { return }
-            var parameterValues = [String: OperationRepresentation.Item.Parameter]()
-            filter.parameters.forEach { parameter in
+            
+            let parameterValues = filter.parameters.reduce(into: [String: OperationRepresentation.Item.Parameter]()) { partialResult, parameter in
                 switch parameter {
                 case .slider(let title, _, _, let customGetter, _):
                     let float = customGetter?(operation) ?? operation.uniformSettings[title]
-                    parameterValues[title] = .float(float)
+                    partialResult[title] = .float(float)
                 case .color(let title, let getter, _):
                     let color = getter(operation)
-                    parameterValues[title] = .color(color)
+                    partialResult[title] = .color(color)
                 case .position(let title, let getter, _):
                     let position = getter(operation)
-                    parameterValues[title] = .position(position)
+                    partialResult[title] = .position(position)
                 case .size(let title, let getter, _):
                     let size = getter(operation)
-                    parameterValues[title] = .size(size)
+                    partialResult[title] = .size(size)
                 }
             }
+            
             let item = OperationRepresentation.Item(filter: filter, parameterValues: parameterValues)
             items.append(item)
         }
