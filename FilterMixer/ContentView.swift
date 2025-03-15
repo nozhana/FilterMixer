@@ -27,11 +27,23 @@ struct ContentView: View {
     
     private func section(forActiveFilter filter: Filter) -> some View {
         VStack {
-            Button(filter.stylizedName, systemImage: "minus.circle.fill") {
-                model.filters.removeAll(of: filter)
-            }
-            .buttonStyle(.bordered)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(alignment: .top) {
+                Button(filter.stylizedName, systemImage: "minus.circle.fill") {
+                    model.filters.removeAll(of: filter)
+                }
+                .buttonStyle(.bordered)
+                
+                Spacer()
+                
+                let filterIndex = model.filters.firstIndex(of: filter) ?? 0
+                Label("Layer \(filterIndex + 1)", systemImage: "square.3.layers.3d")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .safeAreaPadding(.vertical, 8)
+                    .safeAreaPadding(.horizontal, 10)
+                    .background(.thinMaterial, in: .rect(cornerRadius: 10))
+            } // HStack
+            
             if let filterIndex = model.filters.firstIndex(of: filter) {
                 if let operation = model.operations[safe: filterIndex] as? BasicOperation {
                     ForEach(filter.parameters) { parameter in
@@ -101,8 +113,6 @@ struct ContentView: View {
                 } // if
             } // if
         } // VStack
-        .safeAreaPadding()
-        .background(.ultraThinMaterial, in: .rect(cornerRadius: 12))
     }
     
     private func loadSelection(_ pickerItem: PhotosPickerItem?) {
@@ -227,6 +237,11 @@ struct ContentView: View {
                         representations.append(representation)
                     }
                 }
+                
+                if model.filters.isEmpty, representations.isEmpty {
+                    Label("Choose a filter to get started.", systemImage: "camera.filters")
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         
@@ -260,6 +275,7 @@ struct ContentView: View {
         NavigationStack {
             VStack {
                 headerView
+                    .safeAreaPadding(.horizontal, 16)
                     .onDrop(of: [.image], isTargeted: nil) { providers in
                         for provider in providers {
                             _ = provider.loadTransferable(type: Data.self) { result in
@@ -307,7 +323,19 @@ struct ContentView: View {
                     .scrollContentBackground(.hidden)
                 }
             }
-            .padding()
+            .safeAreaInset(edge: .bottom) {
+                if !model.filters.isEmpty {
+                    Button("Remove all", systemImage: "trash", role: .destructive) {
+                        withAnimation(.interactiveSpring) {
+                            model.filters.removeAll()
+                        }
+                    }
+                    .font(.system(size: 19, weight: .medium))
+                    .buttonStyle(.fullWidthCapsule)
+                    .background(.ultraThinMaterial, ignoresSafeAreaEdges: .all)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
             .sheet(item: $imageToPresent) { imageId in
                 let image = imageId == .originalImage ? model.originalImage : model.filteredImage
                 

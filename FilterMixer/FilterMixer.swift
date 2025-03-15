@@ -180,13 +180,13 @@ struct OperationRepresentation: CustomStringConvertible, Codable {
             var description: String {
                 switch self {
                 case .float(let float):
-                    "Float: \(float)"
+                    "[FLOAT] \(float)"
                 case .size(let size):
-                    "Size: \(size)"
+                    "[SIZE] \(size)"
                 case .position(let position):
-                    "Position: \(position)"
+                    "[POSITION] \(position)"
                 case .color(let color):
-                    "Color: \(color)"
+                    "[COLOR] \(color)"
                 }
             }
         }
