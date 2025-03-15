@@ -13,23 +13,37 @@ struct ContentView: View {
     @StateObject private var model = FilterMixer()
     @Namespace private var animation
     @State private var imageToPresent: ImageID?
-    @State private var position: UnitPoint = .center
-    @State private var size: CGSize = .init(width: 0.5, height: 0.5)
     @State private var isPipEnabled = false
     @State private var isShowingPhotosPicker = false
+    @State private var isShowingNewRepresentationAlert = false
+    @State private var newRepresentationName = ""
     @State private var query = ""
     
+    @Defaults(\.representations) var representations
+    
     var searchResults: [Filter] {
-        Filter.allCases.filter { !model.filters.contains($0) && $0.stylizedName.lowercased().hasPrefix(query.lowercased()) }
+        Filter.allCases.filter { !model.filters.contains($0) && $0.stylizedName.lowercased().contains(query.lowercased()) }
     }
     
     private func section(forActiveFilter filter: Filter) -> some View {
         VStack {
-            Button(filter.stylizedName, systemImage: "minus.circle.fill") {
-                model.filters.removeAll(of: filter)
-            }
-            .buttonStyle(.bordered)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(alignment: .top) {
+                Button(filter.stylizedName, systemImage: "minus.circle.fill") {
+                    model.filters.removeAll(of: filter)
+                }
+                .buttonStyle(.bordered)
+                
+                Spacer()
+                
+                let filterIndex = model.filters.firstIndex(of: filter) ?? 0
+                Label("Layer \(filterIndex + 1)", systemImage: "square.3.layers.3d")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .safeAreaPadding(.vertical, 8)
+                    .safeAreaPadding(.horizontal, 10)
+                    .background(.thinMaterial, in: .rect(cornerRadius: 10))
+            } // HStack
+            
             if let filterIndex = model.filters.firstIndex(of: filter) {
                 if let operation = model.operations[safe: filterIndex] as? BasicOperation {
                     ForEach(filter.parameters) { parameter in
@@ -67,40 +81,40 @@ struct ContentView: View {
                                     .offset(y: 6)
                                 }
                             } // HStack
-                        case .color(let title):
+                        case .color(let title, let getter, let setter):
                             SliderColorPicker(title.camelCaseToReadableFormatted(), color: Binding(get: {
-                                operation.uniformSettings[title]
+                                getter(operation)
                             }, set: {
-                                operation.uniformSettings[title] = $0
+                                setter(operation, $0)
                                 model.processImage()
                             }))
-                        case .position(let title):
+                        case .position(let title, let getter, let setter):
                             HStack {
                                 Text(title.camelCaseToReadableFormatted())
                                 Spacer()
-                                PositionPicker(position: $position)
-                                    .onChange(of: position) { _, newValue in
-                                        operation.uniformSettings[title] = newValue.toGpuImagePosition
-                                        model.processImage()
-                                    }
+                                PositionPicker(position: Binding(get: {
+                                    getter(operation).toUnitPoint
+                                }, set: {
+                                    setter(operation, $0.toGpuImagePosition)
+                                    model.processImage()
+                                }))
                             } // HStack
-                        case .size(let title):
+                        case .size(let title, let getter, let setter):
                             HStack {
                                 Text(title.camelCaseToReadableFormatted())
                                 Spacer()
-                                SizePicker(size: $size)
-                                    .onChange(of: size) { _, newValue in
-                                        operation.uniformSettings[title] = newValue.toGpuImageSize
-                                        model.processImage()
-                                    }
+                                SizePicker(size: Binding(get: {
+                                    getter(operation).toCgSize
+                                }, set: {
+                                    setter(operation, $0.toGpuImageSize)
+                                    model.processImage()
+                                }))
                             } // HStack
                         } // switch
                     } // ForEach
                 } // if
             } // if
         } // VStack
-        .safeAreaPadding()
-        .background(.ultraThinMaterial, in: .rect(cornerRadius: 12))
     }
     
     private func loadSelection(_ pickerItem: PhotosPickerItem?) {
@@ -195,6 +209,63 @@ struct ContentView: View {
         }
         
         ToolbarItem(placement: .topBarTrailing) {
+            Menu("Representations", systemImage: "archivebox") {
+                ForEach(representations.map(\.self), id: \.key) { (key, representation) in
+                    Menu(key) {
+                        Menu(representation.items.count ~~ "filter", systemImage: "camera.filters") {
+                            ForEach(representation.items.map(\.filter)) { filter in
+                                Text(filter.stylizedName)
+                            }
+                        }
+                        Divider()
+                        Button("Restore", systemImage: "arrow.circlepath") {
+                            model.restoreRepresentation(withName: key)
+                        }
+                        Button("Delete", systemImage: "trash", role: .destructive) {
+                            representations.removeValue(forKey: key)
+                        }
+                    }
+                }
+                
+                if !representations.isEmpty {
+                    Button("Clear all", systemImage: "trash.fill", role: .destructive) {
+                        representations.removeAll()
+                    }
+                }
+                
+                if !model.filters.isEmpty {
+                    Button("Save current stack", systemImage: "square.and.arrow.down") {
+                        isShowingNewRepresentationAlert = true
+                    }
+                }
+                
+                if model.filters.isEmpty, representations.isEmpty {
+                    Label("Choose a filter to get started.", systemImage: "camera.filters")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .alert("New filter stack", isPresented: $isShowingNewRepresentationAlert) {
+                TextField("My filter stack", text: $newRepresentationName)
+                Button("Cancel", role: .cancel) {}
+                if let representation = model.operationRepresentation {
+                    Button("Save") {
+                        guard !newRepresentationName.isEmpty else { return }
+                        representations[newRepresentationName] = representation
+                    }
+                }
+            } message: {
+                Text("Choose a name for your new filter stack.")
+            }
+        }
+        
+        if !model.filters.isEmpty,
+           let representation = model.operationRepresentation {
+            ToolbarItem(placement: .topBarTrailing) {
+                ShareLink(item: representation.description)
+            }
+        }
+        
+        ToolbarItem(placement: .topBarTrailing) {
             Menu("Add Filters", systemImage: "plus.circle.fill") {
                 Menu("Lookup filters", systemImage: "paintpalette") {
                     ForEach(Filter.lookupFilters.filter { !model.filters.contains($0) }) { filter in
@@ -217,6 +288,7 @@ struct ContentView: View {
         NavigationStack {
             VStack {
                 headerView
+                    .safeAreaPadding(.horizontal, 16)
                     .onDrop(of: [.image], isTargeted: nil) { providers in
                         for provider in providers {
                             _ = provider.loadTransferable(type: Data.self) { result in
@@ -264,7 +336,19 @@ struct ContentView: View {
                     .scrollContentBackground(.hidden)
                 }
             }
-            .padding()
+            .safeAreaInset(edge: .bottom) {
+                if !model.filters.isEmpty {
+                    Button("Remove all", systemImage: "trash", role: .destructive) {
+                        withAnimation(.interactiveSpring) {
+                            model.filters.removeAll()
+                        }
+                    }
+                    .font(.system(size: 19, weight: .medium))
+                    .buttonStyle(.fullWidthCapsule)
+                    .background(.ultraThinMaterial, ignoresSafeAreaEdges: .all)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
             .sheet(item: $imageToPresent) { imageId in
                 let image = imageId == .originalImage ? model.originalImage : model.filteredImage
                 
@@ -279,7 +363,21 @@ struct ContentView: View {
             }
             .navigationTitle("Filter Mixer")
         } // NavigationStack
-        .searchable(text: $query, prompt: "Look for a filter")
+        .searchable(text: $query, prompt: "Look for a filter") {
+            ForEach(searchResults) { result in
+                Text(result.stylizedName).font(.caption)
+                    .searchCompletion(result.stylizedName)
+            }
+        }
+        .submitLabel(.done)
+        .onSubmit(of: .search) {
+            if let firstResult = searchResults.first {
+                model.filters.append(firstResult)
+                withAnimation(.interactiveSpring) {
+                    query = ""
+                }
+            }
+        }
     }
 }
 

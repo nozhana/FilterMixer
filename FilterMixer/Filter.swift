@@ -8,7 +8,7 @@
 import Foundation
 import GPUImage
 
-enum Filter: String, Identifiable, Hashable, CaseIterable {
+enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
     case adaptiveThreshold
     case bulge
     case contrast
@@ -84,6 +84,10 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
     case tealOrangePlusContrast
     case tensionGreen
     
+    // Custom lookups
+    case oldPhoto1
+    case oldPhoto15
+    
     var stylizedName: String {
         switch self {
         case .iosBlur: "iOS Blur"
@@ -98,6 +102,8 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
         case .kodak5205Fuji3510: "Kodak 5205 Fuji 3510"
         case .kodak5218Kodak2383: "Kodak 5218 Kodak 2383"
         case .kodak5218Kodak2395: "Kodak 5218 Kodak 2395"
+        case .oldPhoto1: "Old Photo 1"
+        case .oldPhoto15: "Old Photo 15"
         default: rawValue.camelCaseToReadableFormatted()
         }
     }
@@ -132,7 +138,9 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
          .nightFromDay,
          .softWarming,
          .tealOrangePlusContrast,
-         .tensionGreen]
+         .tensionGreen,
+         .oldPhoto1,
+         .oldPhoto15]
             .contains(self)
     }
     
@@ -151,7 +159,7 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
                      customGetter: { ($0 as? AdaptiveThreshold)?.blurRadiusInPixels ?? 2 },
                      customSetter: { ($0 as? AdaptiveThreshold)?.blurRadiusInPixels = $1 })]
         case .bulge:
-            [.position(title: "center"),
+            [.position(title: "center") { ($0 as! BulgeDistortion).center } setter: { ($0 as! BulgeDistortion).center = $1 },
              .slider(title: "radius", range: 0...1, stepCount: 20),
              .slider(title: "scale", range: 0...1, stepCount: 20)]
         case .contrast:
@@ -159,7 +167,8 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
         case .exposure:
             [.slider(title: "exposure", range: -1...1)]
         case .falseColor:
-            [.color(title: "firstColor"), .color(title: "secondColor")]
+            [.color(title: "firstColor") { ($0 as! FalseColor).firstColor } setter: { ($0 as! FalseColor).firstColor = $1 },
+             .color(title: "secondColor") { ($0 as! FalseColor).secondColor } setter: { ($0 as! FalseColor).secondColor = $1 }]
         case .gaussianBlur:
             [.slider(title: "blurRadiusInPixels", range: 0.1...50, customGetter: { operation in
                 (operation as! GaussianBlur).blurRadiusInPixels
@@ -176,9 +185,9 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
              .slider(title: "slope", range: 0...1)]
         case .highlightAndShadowTint:
             [.slider(title: "highlightTintIntensity", range: 0...1),
-             .color(title: "highlightTintColor"),
+             .color(title: "highlightTintColor") { ($0 as! HighlightAndShadowTint).highlightTintColor } setter: { ($0 as! HighlightAndShadowTint).highlightTintColor = $1 },
              .slider(title: "shadowTintIntensity", range: 0...1),
-             .color(title: "shadowTintColor")]
+             .color(title: "shadowTintColor") { ($0 as! HighlightAndShadowTint).shadowTintColor } setter: { ($0 as! HighlightAndShadowTint).shadowTintColor = $1 }]
         case .iosBlur:
             [.slider(title: "blurRadiusInPixels", range: 0.01...60, customGetter: { operation in
                 (operation as! iOSBlur)
@@ -200,15 +209,15 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
         case .kuwahara:
             [.slider(title: "radius", range: 1...10)]
         case .levelsAdjustment:
-            [.color(title: "minimum"),
-             .color(title: "middle"),
-             .color(title: "maximum")]
+            [.color(title: "minimum") { ($0 as! LevelsAdjustment).minimum } setter: { ($0 as! LevelsAdjustment).minimum = $1 },
+             .color(title: "middle") { ($0 as! LevelsAdjustment).middle } setter: { ($0 as! LevelsAdjustment).middle = $1 },
+             .color(title: "maximum") { ($0 as! LevelsAdjustment).maximum } setter: { ($0 as! LevelsAdjustment).maximum = $1 }]
         case .luminance:
             []
         case .luminanceThreshold:
             [.slider(title: "threshold", range: 0...1)]
         case .monochrome:
-            [.color(title: "filterColor"),
+            [.color(title: "filterColor") { ($0 as! MonochromeFilter).color } setter: { ($0 as! MonochromeFilter).color = $1 },
              .slider(title: "intensity", range: 0...1)]
         case .motionBlur:
             [.slider(title: "blurSize", range: 0.01...50, customGetter: { operation in
@@ -224,14 +233,14 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
         case .opacity:
             [.slider(title: "opacity", range: 0...1)]
         case .pinch:
-            [.position(title: "center"),
+            [.position(title: "center") { ($0 as! PinchDistortion).center } setter: { ($0 as! PinchDistortion).center = $1 },
              .slider(title: "radius", range: 0...1),
              .slider(title: "scale", range: 0...1)]
         case .pixellate:
             [.slider(title: "fractionalWidthOfPixel", range: 0.01...0.1)]
         case .polarPixellate:
-            [.size(title: "pixelSize"),
-             .position(title: "center")]
+            [.size(title: "pixelSize") { ($0 as! PolarPixellate).pixelSize } setter: { ($0 as! PolarPixellate).pixelSize = $1 },
+             .position(title: "center") { ($0 as! PolarPixellate).center } setter: { ($0 as! PolarPixellate).center = $1 }]
         case .polkaDot:
             [.slider(title: "fractionalWidthOfPixel", range: 0.01...0.1),
              .slider(title: "dotScaling", range: 0...1)]
@@ -256,15 +265,15 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
         case .solarize:
             [.slider(title: "threshold", range: 0...1)]
         case .sphereRefraction:
-            [.position(title: "center"),
+            [.position(title: "center") { ($0 as! SphereRefraction).center } setter: { ($0 as! SphereRefraction).center = $1 },
              .slider(title: "radius", range: 0...1),
              .slider(title: "refractiveIndex", range: 0...1)]
         case .stretch:
-            [.position(title: "center")]
+            [.position(title: "center") { ($0 as! StretchDistortion).center } setter: { ($0 as! StretchDistortion).center = $1 }]
         case .swirl:
             [.slider(title: "radius", range: 0...1),
              .slider(title: "angle", range: 0...(.pi)),
-             .position(title: "center")]
+             .position(title: "center") { ($0 as! SwirlDistortion).center } setter: { ($0 as! SwirlDistortion).center = $1 }]
         case .thresholdSketch:
             [.slider(title: "edgeStrength", range: 0.1...4),
              .slider(title: "threshold", range: 0...1)]
@@ -279,8 +288,8 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
         case .vibrance:
             [.slider(title: "vibrance", range: 0...1)]
         case .vignette:
-            [.position(title: "vignetteCenter"),
-             .color(title: "vignetteColor"),
+            [.position(title: "vignetteCenter") { ($0 as! Vignette).center } setter: { ($0 as! Vignette).center = $1 },
+             .color(title: "vignetteColor") { ($0 as! Vignette).color } setter: { ($0 as! Vignette).color = $1 },
              .slider(title: "vignetteStart", range: 0...1),
              .slider(title: "vignetteEnd", range: 0...1)]
         case .whiteBalance:
@@ -292,7 +301,7 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
              .slider(title: "tint", range: 0...1)]
         case .zoomBlur:
             [.slider(title: "size", range: 0...40),
-             .position(title: "center")]
+             .position(title: "blurCenter") { ($0 as! ZoomBlur).blurCenter } setter: { ($0 as! ZoomBlur).blurCenter = $1 }]
         default: isBasicLookupFilter ? [.slider(title: "intensity", range: 0...1, stepCount: 50)] : []
         }
     }
@@ -372,6 +381,8 @@ enum Filter: String, Identifiable, Hashable, CaseIterable {
         case .softWarming: LookupFilter("lookup_soft_warming")
         case .tealOrangePlusContrast: LookupFilter("lookup_teal_orange_plus_contrast")
         case .tensionGreen: LookupFilter("lookup_tension_green")
+        case .oldPhoto1: LookupFilter("lookup_old_photo_1")
+        case .oldPhoto15: LookupFilter("lookup_old_photo_15")
         }
     }
 }

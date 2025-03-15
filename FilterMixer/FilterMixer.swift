@@ -24,7 +24,7 @@ final class FilterMixer: ObservableObject {
         }
     }
     
-    private var operationRepresentation: OperationRepresentation?
+    private(set) var operationRepresentation: OperationRepresentation?
     
     private var inputImage: PictureInput?
     private lazy var outputImage = {
@@ -47,7 +47,7 @@ final class FilterMixer: ObservableObject {
     
     func processImage() {
         inputImage?.processImage()
-        saveRepresentation()
+        cacheRepresentation()
     }
     
     func configurePipeline() {
@@ -55,7 +55,7 @@ final class FilterMixer: ObservableObject {
         operationGroup = OperationGroup()
         operations.forEach { $0.removeAllTargets() }
         operations = filters.map { $0.makeOperation() }
-        restoreOperations()
+        restoreCachedRepresentation()
         operationGroup!.configureGroup(withOperations: operations)
         
         inputImage?.removeAllTargets()
@@ -63,50 +63,74 @@ final class FilterMixer: ObservableObject {
         
         inputImage! -->> operationGroup! -->> outputImage
         inputImage!.processImage()
-        saveRepresentation()
+        cacheRepresentation()
     }
     
-    private func restoreOperations() {
+    func restoreRepresentation(withName name: String) {
+        let representations = Defaults[\.representations]
+        guard let representation = representations[name] else { return }
+        operationRepresentation = representation
+        filters = representation.items.map(\.filter)
+    }
+    
+    private func restoreCachedRepresentation() {
         guard let operationRepresentation else { return }
         operationRepresentation.items.forEach { item in
             if let filterIndex = filters.firstIndex(of: item.filter),
                let operation = operations[safe: filterIndex] as? BasicOperation {
-                item.parameterValues.forEach { key, value in
-                    if let floatValue = value as? Float {
-                        operation.uniformSettings[key] = floatValue
-                    } else if let colorValue = value as? Color {
-                        operation.uniformSettings[key] = colorValue
-                    } else if let positionValue = value as? Position {
-                        operation.uniformSettings[key] = positionValue
-                    } else if let sizeValue = value as? Size {
-                        operation.uniformSettings[key] = sizeValue
+                item.filter.parameters.forEach { parameter in
+                    switch parameter {
+                    case .slider(let title, _, _, _, let customSetter):
+                        if let value = item.parameterValues[title],
+                           case .float(let float) = value {
+                            if let customSetter {
+                                customSetter(operation, float)
+                            } else {
+                                operation.uniformSettings[title] = float
+                            }
+                        }
+                    case .position(let title, _, let setter):
+                        if let value = item.parameterValues[title],
+                           case .position(let position) = value {
+                            setter(operation, position)
+                        }
+                    case .size(let title, _, let setter):
+                        if let value = item.parameterValues[title],
+                           case .size(let size) = value {
+                            setter(operation, size)
+                        }
+                    case .color(let title, _, let setter):
+                        if let value = item.parameterValues[title],
+                           case .color(let color) = value {
+                            setter(operation, color)
+                        }
                     }
                 }
             }
         }
     }
     
-    private func saveRepresentation() {
+    private func cacheRepresentation() {
         var items: [OperationRepresentation.Item] = []
         
         filters.indices.forEach { index in
             guard let filter = filters[safe: index],
                   let operation = operations[safe: index] as? BasicOperation else { return }
-            var parameterValues = [String: Any]()
+            var parameterValues = [String: OperationRepresentation.Item.Parameter]()
             filter.parameters.forEach { parameter in
                 switch parameter {
                 case .slider(let title, _, _, let customGetter, _):
-                    let value: Float = customGetter?(operation) ?? operation.uniformSettings[title]
-                    parameterValues[title] = value
-                case .color(let title):
-                    let value: Color = operation.uniformSettings[title]
-                    parameterValues[title] = value
-                case .position(let title):
-                    let value: Position = operation.uniformSettings[title]
-                    parameterValues[title] = value
-                case .size(let title):
-                    let value: Size = operation.uniformSettings[title]
-                    parameterValues[title] = value
+                    let float = customGetter?(operation) ?? operation.uniformSettings[title]
+                    parameterValues[title] = .float(float)
+                case .color(let title, let getter, _):
+                    let color = getter(operation)
+                    parameterValues[title] = .color(color)
+                case .position(let title, let getter, _):
+                    let position = getter(operation)
+                    parameterValues[title] = .position(position)
+                case .size(let title, let getter, _):
+                    let size = getter(operation)
+                    parameterValues[title] = .size(size)
                 }
             }
             let item = OperationRepresentation.Item(filter: filter, parameterValues: parameterValues)
@@ -142,11 +166,130 @@ func -->> <T: ImageConsumer>(lhs: ImageSource, rhs: T) -> T {
     return rhs
 }
 
-struct OperationRepresentation {
-    struct Item {
+struct OperationRepresentation: CustomStringConvertible, Codable {
+    struct Item: CustomStringConvertible, Codable {
         var filter: Filter
-        var parameterValues: [String: Any]
+        var parameterValues: [String: Parameter]
+        
+        enum Parameter: Codable, CustomStringConvertible {
+            case float(Float)
+            case size(Size)
+            case position(Position)
+            case color(Color)
+            
+            var description: String {
+                switch self {
+                case .float(let float):
+                    "[FLOAT] \(float)"
+                case .size(let size):
+                    "[SIZE] \(size)"
+                case .position(let position):
+                    "[POSITION] \(position)"
+                case .color(let color):
+                    "[COLOR] \(color)"
+                }
+            }
+        }
+        
+        var description: String {
+            "- \(filter.stylizedName)\n"
+            + parameterValues
+                .map { "\($0.key.camelCaseToReadableFormatted()): \($0.value)"}
+                .joined(separator: "\n")
+        }
     }
     
     let items: [Item]
+    
+    var description: String {
+        "Operation Representation\n\n"
+        + items.enumerated().map { String($0.offset + 1) + $0.element.description }.joined(separator: "\n\n")
+    }
+}
+
+extension Size: @retroactive CustomStringConvertible {
+    public var description: String {
+        "(w: \(width), h: \(height))"
+    }
+}
+
+extension Size: @retroactive Codable {
+    enum CodingKeys: String, CodingKey {
+        case width, height
+    }
+    
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let width = try container.decode(Float.self, forKey: .width)
+        let height = try container.decode(Float.self, forKey: .height)
+        self.init(width: width, height: height)
+    }
+    
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(width, forKey: .width)
+        try container.encode(height, forKey: .height)
+    }
+}
+
+extension Position: @retroactive CustomStringConvertible {
+    public var description: String {
+        "(x: \(x), y: \(y)" + (z == nil ? ")" : ", z: \(z!))")
+    }
+}
+
+extension Position: @retroactive Codable {
+    enum CodingKeys: String, CodingKey {
+        case x, y, z
+    }
+    
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let x = try container.decode(Float.self, forKey: .x)
+        let y = try container.decode(Float.self, forKey: .y)
+        let z = try container.decodeIfPresent(Float.self, forKey: .z)
+        self.init(x, y, z)
+    }
+    
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(x, forKey: .x)
+        try container.encode(y, forKey: .y)
+        try container.encode(z, forKey: .z)
+    }
+}
+
+extension GPUImage.Color: @retroactive CustomStringConvertible {
+    public var description: String {
+        "(r: \(redComponent), g: \(greenComponent), b: \(blueComponent), a: \(alphaComponent))"
+    }
+}
+
+extension GPUImage.Color: @retroactive Codable {
+    enum CodingKeys: String, CodingKey {
+        case red, green, blue, alpha
+    }
+    
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let red = try container.decode(Float.self, forKey: .red)
+        let green = try container.decode(Float.self, forKey: .green)
+        let blue = try container.decode(Float.self, forKey: .blue)
+        let alpha = try container.decodeIfPresent(Float.self, forKey: .alpha) ?? 1
+        self.init(red: red, green: green, blue: blue, alpha: alpha)
+    }
+    
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(redComponent, forKey: .red)
+        try container.encode(greenComponent, forKey: .green)
+        try container.encode(blueComponent, forKey: .blue)
+        try container.encode(alphaComponent, forKey: .alpha)
+    }
+}
+
+extension DefaultsContainer {
+    var representations: [String: OperationRepresentation] {
+        [:]
+    }
 }
