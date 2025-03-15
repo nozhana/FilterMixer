@@ -171,7 +171,7 @@ struct ContentView: View {
         if !model.filters.isEmpty,
            let representation = model.operationRepresentation {
             ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(item: Image(uiImage: representation.lookupImage), subject: Text("Operation Representation"), message: Text(representation.description), preview: SharePreview("Lookup", image: Image(uiImage: representation.lookupImage)))
+                ShareLink(item: representation.lookupImage, subject: Text("Operation Representation"), message: Text(representation.description), preview: SharePreview("Lookup", image: representation.lookupImage))
             }
         }
         

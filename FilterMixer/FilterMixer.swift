@@ -206,7 +206,7 @@ struct OperationRepresentation: CustomStringConvertible, Codable {
         items.enumerated().map { String($0.offset + 1) + $0.element.description }.joined(separator: "\n\n")
     }
     
-    var lookupImage: UIImage {
+    var lookupImage: ImageSharable {
         let lookup = UIImage(named: "lookup")!
         let ops = items.map(\.filter).map { $0.makeOperation() }
         for (item, operation) in zip(items, ops) {
@@ -240,8 +240,13 @@ struct OperationRepresentation: CustomStringConvertible, Codable {
             }
         }
         
-        let filtered = lookup.filterWithOperationsSynchronously(ops)
-        return filtered
+        return ImageSharable {
+            await withCheckedContinuation { continuation in
+                lookup.filterWithOperationsAsynchronously(ops) { image in
+                    continuation.resume(returning: image)
+                }
+            }
+        }
     }
 }
 
