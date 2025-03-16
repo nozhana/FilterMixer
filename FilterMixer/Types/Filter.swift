@@ -89,6 +89,7 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
     // Custom lookups
     case oldPhoto1
     case oldPhoto15
+    case cyberpunk3
     
     var stylizedName: String {
         switch self {
@@ -106,6 +107,7 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
         case .kodak5218Kodak2395: "Kodak 5218 Kodak 2395"
         case .oldPhoto1: "Old Photo 1"
         case .oldPhoto15: "Old Photo 15"
+        case .cyberpunk3: "Cyberpunk 3"
         default: rawValue.camelCaseToReadableFormatted()
         }
     }
@@ -142,7 +144,8 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
          .tealOrangePlusContrast,
          .tensionGreen,
          .oldPhoto1,
-         .oldPhoto15]
+         .oldPhoto15,
+         .cyberpunk3]
             .contains(self)
     }
     
@@ -394,6 +397,7 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
         case .tensionGreen: LookupFilter("lookup_tension_green")
         case .oldPhoto1: LookupFilter("lookup_old_photo_1")
         case .oldPhoto15: LookupFilter("lookup_old_photo_15")
+        case .cyberpunk3: LookupFilter("lookup_cyberpunk_3")
         }
     }
 }
