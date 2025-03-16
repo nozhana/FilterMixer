@@ -19,6 +19,7 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
     case halftone
     case haze
     case highlightAndShadowTint
+    case hueAdjustment
     case iosBlur
     case kuwahara
     case levelsAdjustment
@@ -188,6 +189,8 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
              .color(title: "highlightTintColor") { ($0 as! HighlightAndShadowTint).highlightTintColor } setter: { ($0 as! HighlightAndShadowTint).highlightTintColor = $1 },
              .slider(title: "shadowTintIntensity", range: 0...1),
              .color(title: "shadowTintColor") { ($0 as! HighlightAndShadowTint).shadowTintColor } setter: { ($0 as! HighlightAndShadowTint).shadowTintColor = $1 }]
+        case .hueAdjustment:
+            [.slider(title: "hue", range: 0...180, stepCount: 90, customGetter: { ($0 as! HueAdjustment).hue.normalized(from: (90 - .pi/2)...(90 + .pi/2), to: 0...180).rounded() }, customSetter: { ($0 as! HueAdjustment).hue = $1.rounded().normalized(from: 0...180, to: (90 - .pi/2)...(90 + .pi/2)) })]
         case .iosBlur:
             [.slider(title: "blurRadiusInPixels", range: 0.01...60, customGetter: { operation in
                 (operation as! iOSBlur)
@@ -281,7 +284,10 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
             [.slider(title: "edgeStrength", range: 0.1...4),
              .slider(title: "threshold", range: 0...1)]
         case .tiltShift:
-            []
+            [.slider(title: "blurRadiusInPixels", range: 1...50, stepCount: 49, customGetter: { ($0 as! TiltShift).blurRadiusInPixels }, customSetter: { ($0 as! TiltShift).blurRadiusInPixels = $1 }),
+             .slider(title: "topFocusLevel", range: 0...1, stepCount: 20, customGetter: { ($0 as! TiltShift).topFocusLevel }, customSetter: { ($0 as! TiltShift).topFocusLevel = $1 }),
+             .slider(title: "bottomFocusLevel", range: 0...1, stepCount: 20, customGetter: { ($0 as! TiltShift).bottomFocusLevel }, customSetter: { ($0 as! TiltShift).bottomFocusLevel = $1 }),
+             .slider(title: "focusFallOffRate", range: 0...1, stepCount: 20, customGetter: { ($0 as! TiltShift).focusFallOffRate }, customSetter: { ($0 as! TiltShift).focusFallOffRate = $1 })]
         case .toon:
             [.slider(title: "threshold", range: 0...1),
              .slider(title: "quantizationLevels", range: 0...20)]
@@ -318,6 +324,7 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
         case .halftone: Halftone()
         case .haze: Haze()
         case .highlightAndShadowTint: HighlightAndShadowTint()
+        case .hueAdjustment: HueAdjustment()
         case .iosBlur: iOSBlur()
         case .kuwahara: KuwaharaFilter()
         case .levelsAdjustment: LevelsAdjustment()

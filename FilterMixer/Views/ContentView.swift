@@ -52,7 +52,7 @@ struct ContentView: View {
                         imageToPresent = .filteredImage
                     }
                     .contextMenu {
-                        Button("Save to photos", systemImage: "square.and.arrow.down.fill") {
+                        Button("Save to photos", systemImage: "square.and.arrow.down") {
                             UIImageWriteToSavedPhotosAlbum(model.filteredImage, nil, nil, nil)
                         }
                     }
@@ -68,7 +68,7 @@ struct ContentView: View {
                         imageToPresent = .originalImage
                     }
                     .contextMenu {
-                        Button("Change photo", systemImage: "photo.fill") {
+                        Button("Change photo", systemImage: "photo") {
                             isShowingPhotosPicker = true
                         }
                     }
@@ -84,11 +84,10 @@ struct ContentView: View {
                         imageToPresent = .originalImage
                     }
                     .contextMenu {
-                        Button("Change photo", systemImage: "photo.fill") {
+                        Button("Change photo", systemImage: "photo") {
                             isShowingPhotosPicker = true
                         }
                     }
-                    .zIndex(1)
                 
                 Image(uiImage: model.filteredImage)
                     .resizable()
@@ -99,11 +98,10 @@ struct ContentView: View {
                         imageToPresent = .filteredImage
                     }
                     .contextMenu {
-                        Button("Save to photos", systemImage: "square.and.arrow.down.fill") {
+                        Button("Save to photos", systemImage: "square.and.arrow.down") {
                             UIImageWriteToSavedPhotosAlbum(model.filteredImage, nil, nil, nil)
                         }
                     }
-                    .zIndex(0)
             }
         }
     }
@@ -156,11 +154,15 @@ struct ContentView: View {
             }
             .alert("New filter stack", isPresented: $isShowingNewRepresentationAlert) {
                 TextField("My filter stack", text: $newRepresentationName)
-                Button("Cancel", role: .cancel) {}
+                Button("Cancel", role: .cancel) {
+                    newRepresentationName = ""
+                }
+                
                 if let representation = model.operationRepresentation {
                     Button("Save") {
                         guard !newRepresentationName.isEmpty else { return }
                         representations[newRepresentationName] = representation
+                        newRepresentationName = ""
                     }
                 }
             } message: {
@@ -312,6 +314,7 @@ private struct LookupView: View {
                     Image(uiImage: lookupImage)
                         .resizable().scaledToFit()
                         .frame(width: phase.imageSize, height: phase.imageSize)
+                        .clipShape(.rect(cornerRadius: phase.cornerRadius))
                         .contextMenu {
                             Label("Filtered CLUT", systemImage: "swatchpalette")
                             
@@ -328,11 +331,10 @@ private struct LookupView: View {
                             Image(uiImage: lookupImage)
                                 .resizable().scaledToFit()
                         }
-                        .clipShape(.rect(cornerRadius: phase.cornerRadius))
                         
                     
                     if phase.shouldShowButtons {
-                        HStack {
+                        VStack(alignment: .leading, spacing: 6) {
                             Button("Save to photos", systemImage: "square.and.arrow.down") {
                                 UIImageWriteToSavedPhotosAlbum(lookupImage, nil, nil, nil)
                             } // Button
@@ -371,12 +373,12 @@ extension LookupView {
         }
         
         var frameHeight: CGFloat {
-            86 + 32
+            86 + 16
         }
         
         var imageSize: CGFloat {
             switch self {
-            case .idle, .shrinking: 32
+            case .idle, .shrinking: 44
             case .flashing: 86
             }
         }

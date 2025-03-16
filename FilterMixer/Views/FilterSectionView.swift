@@ -33,7 +33,7 @@ struct FilterSectionView: View {
             } // HStack
             
             if let filterIndex = model.filters.firstIndex(of: filter) {
-                if let operation = model.operations[safe: filterIndex] as? BasicOperation {
+                if let operation = model.operations[safe: filterIndex] {
                     ForEach(filter.parameters) { parameter in
                         FilterParameterView(operation: operation, parameter: parameter)
                     } // ForEach
@@ -44,7 +44,7 @@ struct FilterSectionView: View {
 }
 
 private struct FilterParameterView: View {
-    var operation: BasicOperation
+    var operation: ImageProcessingOperation
     var parameter: FilterParameter
     
     @EnvironmentObject private var model: FilterMixer
@@ -57,13 +57,15 @@ private struct FilterParameterView: View {
                 WheelSlider(value: Binding(get: {
                     if let customGetter {
                         Double(customGetter(operation))
-                    } else {
+                    } else if let operation = operation as? BasicOperation {
                         Double(operation.uniformSettings[title])
+                    } else {
+                        0
                     }
                 }, set: {
                     if let customSetter {
                         customSetter(operation, Float($0))
-                    } else {
+                    } else if let operation = operation as? BasicOperation {
                         operation.uniformSettings[title] = Float($0)
                     }
                     model.processImage()
@@ -75,7 +77,7 @@ private struct FilterParameterView: View {
                     Group {
                         if let customGetter {
                             Text(Double(customGetter(operation)).formatted())
-                        } else {
+                        } else if let operation = operation as? BasicOperation {
                             Text(Double(operation.uniformSettings[title]).formatted())
                         }
                     }
