@@ -168,13 +168,6 @@ struct ContentView: View {
             }
         }
         
-        if !model.filters.isEmpty,
-           let representation = model.operationRepresentation {
-            ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(item: representation.lookupImage, subject: Text("Operation Representation"), message: Text(representation.description), preview: SharePreview("Lookup", image: representation.lookupImage))
-            }
-        }
-        
         ToolbarItem(placement: .topBarTrailing) {
             Menu("Add Filters", systemImage: "plus.circle.fill") {
                 Menu("Lookup filters", systemImage: "paintpalette") {
@@ -215,6 +208,15 @@ struct ContentView: View {
                         }
                         return true
                     }
+                
+                Button("Generate CLUT", systemImage: "swatchpalette") {
+                    Task {
+                        await model.processLookupImage()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                
+                LookupView(lookupImage: $model.filteredLookupImage)
                 
                 if query.isEmpty {
                     if model.filters.isEmpty {
@@ -298,4 +300,93 @@ struct ContentView: View {
 
 enum ImageID: String, Identifiable {
     case originalImage, filteredImage
+}
+
+private struct LookupView: View {
+    @Binding var lookupImage: UIImage?
+    
+    var body: some View {
+        PhaseAnimator(AnimationPhase.allCases, trigger: lookupImage, content: { phase in
+            if let lookupImage {
+                HStack {
+                    Image(uiImage: lookupImage)
+                        .resizable().scaledToFit()
+                        .frame(width: phase.imageSize, height: phase.imageSize)
+                        .contextMenu {
+                            Label("Filtered CLUT", systemImage: "swatchpalette")
+                            
+                            Button("Save to photos", systemImage: "square.and.arrow.down") {
+                                UIImageWriteToSavedPhotosAlbum(lookupImage, nil, nil, nil)
+                            } // Button
+                            
+                            Button("Clear", systemImage: "xmark.circle.fill", role: .destructive) {
+                                withAnimation(.snappy) {
+                                    self.lookupImage = nil
+                                }
+                            } // Button
+                        } preview: {
+                            Image(uiImage: lookupImage)
+                                .resizable().scaledToFit()
+                        }
+                        .clipShape(.rect(cornerRadius: phase.cornerRadius))
+                        
+                    
+                    if phase.shouldShowButtons {
+                        HStack {
+                            Button("Save to photos", systemImage: "square.and.arrow.down") {
+                                UIImageWriteToSavedPhotosAlbum(lookupImage, nil, nil, nil)
+                            } // Button
+                            
+                            Button("Clear", systemImage: "xmark.circle.fill", role: .destructive) {
+                                withAnimation(.snappy) {
+                                    self.lookupImage = nil
+                                }
+                            } // Button
+                        } // HStack
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                    } // if
+                } // HStack
+                .frame(height: phase.frameHeight)
+            } // if
+        }, animation: \.animation)
+    }
+}
+
+extension LookupView {
+    enum AnimationPhase: CaseIterable {
+        case idle, flashing, shrinking
+        
+        var shouldShowButtons: Bool {
+            switch self {
+            case .flashing: false
+            default: true
+            }
+        }
+        
+        var cornerRadius: CGFloat {
+            switch self {
+            case .flashing: 12
+            default: 8
+            }
+        }
+        
+        var frameHeight: CGFloat {
+            86 + 32
+        }
+        
+        var imageSize: CGFloat {
+            switch self {
+            case .idle, .shrinking: 32
+            case .flashing: 86
+            }
+        }
+        
+        var animation: Animation? {
+            switch self {
+            case .idle: .smooth.delay(0.25)
+            case .flashing: .snappy
+            case .shrinking: .smooth(duration: 0.5).delay(0.5)
+            }
+        }
+    }
 }

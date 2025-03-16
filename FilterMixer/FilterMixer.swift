@@ -16,7 +16,8 @@ final class FilterMixer: ObservableObject {
         }
     }
     
-    @Published private(set) var filteredImage: UIImage = .placeholder
+    @MainActor @Published private(set) var filteredImage: UIImage = .placeholder
+    @MainActor @Published var filteredLookupImage: UIImage?
     
     @Published var filters: [Filter] = [] {
         didSet {
@@ -48,6 +49,13 @@ final class FilterMixer: ObservableObject {
     func processImage() {
         inputImage?.processImage()
         cacheRepresentation()
+    }
+    
+    func processLookupImage() async {
+        let filtered = await operationRepresentation?.lookupImage
+        await MainActor.run {
+            filteredLookupImage = filtered
+        }
     }
     
     func configurePipeline() {
@@ -206,42 +214,42 @@ struct OperationRepresentation: CustomStringConvertible, Codable {
         items.enumerated().map { String($0.offset + 1) + $0.element.description }.joined(separator: "\n\n")
     }
     
-    var lookupImage: ImageSharable {
-        let lookup = UIImage(named: "lookup")!
-        let ops = items.map(\.filter).map { $0.makeOperation() }
-        for (item, operation) in zip(items, ops) {
-            for parameter in item.filter.parameters {
-                switch parameter {
-                case .slider(let title, _, _, _, let customSetter):
-                    if let parameterValue = item.parameterValues[title],
-                       case .float(let float) = parameterValue {
-                        if let customSetter {
-                            customSetter(operation, float)
-                        } else if let operation = operation as? BasicOperation {
-                            operation.uniformSettings[title] = float
+    var lookupImage: UIImage {
+        get async {
+            let lookup = UIImage(named: "lookup")!
+            let ops = items.map(\.filter).map { $0.makeOperation() }
+            for (item, operation) in zip(items, ops) {
+                for parameter in item.filter.parameters {
+                    switch parameter {
+                    case .slider(let title, _, _, _, let customSetter):
+                        if let parameterValue = item.parameterValues[title],
+                           case .float(let float) = parameterValue {
+                            if let customSetter {
+                                customSetter(operation, float)
+                            } else if let operation = operation as? BasicOperation {
+                                operation.uniformSettings[title] = float
+                            }
                         }
-                    }
-                case .color(let title, _, let setter):
-                    if let parameterValue = item.parameterValues[title],
-                       case .color(let color) = parameterValue {
-                        setter(operation, color)
-                    }
-                case .position(let title, _, let setter):
-                    if let parameterValue = item.parameterValues[title],
-                       case .position(let position) = parameterValue {
-                        setter(operation, position)
-                    }
-                case .size(let title, _, let setter):
-                    if let parameterValue = item.parameterValues[title],
-                       case .size(let size) = parameterValue {
-                        setter(operation, size)
+                    case .color(let title, _, let setter):
+                        if let parameterValue = item.parameterValues[title],
+                           case .color(let color) = parameterValue {
+                            setter(operation, color)
+                        }
+                    case .position(let title, _, let setter):
+                        if let parameterValue = item.parameterValues[title],
+                           case .position(let position) = parameterValue {
+                            setter(operation, position)
+                        }
+                    case .size(let title, _, let setter):
+                        if let parameterValue = item.parameterValues[title],
+                           case .size(let size) = parameterValue {
+                            setter(operation, size)
+                        }
                     }
                 }
             }
-        }
-        
-        return ImageSharable {
-            await withCheckedContinuation { continuation in
+            
+            return await withCheckedContinuation { continuation in
                 lookup.filterWithOperationsAsynchronously(ops) { image in
                     continuation.resume(returning: image)
                 }
