@@ -19,3 +19,9 @@ extension Array {
         }
     }
 }
+
+extension Array where Element: Equatable {
+    mutating func removeAll(of element: Element) {
+        removeAll(where: { $0 == element })
+    }
+}

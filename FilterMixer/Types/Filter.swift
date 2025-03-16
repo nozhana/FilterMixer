@@ -10,6 +10,7 @@ import GPUImage
 
 enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
     case adaptiveThreshold
+    case brightness
     case bulge
     case contrast
     case exposure
@@ -19,7 +20,7 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
     case halftone
     case haze
     case highlightAndShadowTint
-    case hueAdjustment
+    case hueRotation
     case iosBlur
     case kuwahara
     case levelsAdjustment
@@ -159,6 +160,8 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
             [.slider(title: "blurRadiusInPixels", range: 1...30, stepCount: 60,
                      customGetter: { ($0 as? AdaptiveThreshold)?.blurRadiusInPixels ?? 2 },
                      customSetter: { ($0 as? AdaptiveThreshold)?.blurRadiusInPixels = $1 })]
+        case .brightness:
+            [.slider(title: "brightness", range: 0...1)]
         case .bulge:
             [.position(title: "center") { ($0 as! BulgeDistortion).center } setter: { ($0 as! BulgeDistortion).center = $1 },
              .slider(title: "radius", range: 0...1, stepCount: 20),
@@ -189,7 +192,7 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
              .color(title: "highlightTintColor") { ($0 as! HighlightAndShadowTint).highlightTintColor } setter: { ($0 as! HighlightAndShadowTint).highlightTintColor = $1 },
              .slider(title: "shadowTintIntensity", range: 0...1),
              .color(title: "shadowTintColor") { ($0 as! HighlightAndShadowTint).shadowTintColor } setter: { ($0 as! HighlightAndShadowTint).shadowTintColor = $1 }]
-        case .hueAdjustment:
+        case .hueRotation:
             [.slider(title: "hue", range: 0...180, stepCount: 90, customGetter: { ($0 as! HueAdjustment).hue.normalized(from: (90 - .pi/2)...(90 + .pi/2), to: 0...180).rounded() }, customSetter: { ($0 as! HueAdjustment).hue = $1.rounded().normalized(from: 0...180, to: (90 - .pi/2)...(90 + .pi/2)) })]
         case .iosBlur:
             [.slider(title: "blurRadiusInPixels", range: 0.01...60, customGetter: { operation in
@@ -315,6 +318,7 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
     func makeOperation() -> ImageProcessingOperation {
         switch self {
         case .adaptiveThreshold: AdaptiveThreshold()
+        case .brightness: BrightnessAdjustment()
         case .bulge: BulgeDistortion()
         case .contrast: ContrastAdjustment()
         case .exposure: ExposureAdjustment()
@@ -324,7 +328,7 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
         case .halftone: Halftone()
         case .haze: Haze()
         case .highlightAndShadowTint: HighlightAndShadowTint()
-        case .hueAdjustment: HueAdjustment()
+        case .hueRotation: HueAdjustment()
         case .iosBlur: iOSBlur()
         case .kuwahara: KuwaharaFilter()
         case .levelsAdjustment: LevelsAdjustment()
@@ -391,15 +395,5 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
         case .oldPhoto1: LookupFilter("lookup_old_photo_1")
         case .oldPhoto15: LookupFilter("lookup_old_photo_15")
         }
-    }
-}
-
-extension Identifiable where Self: RawRepresentable {
-    var id: RawValue { rawValue }
-}
-
-extension Array where Element: Equatable {
-    mutating func removeAll(of element: Element) {
-        removeAll(where: { $0 == element })
     }
 }

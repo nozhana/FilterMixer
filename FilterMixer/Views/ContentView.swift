@@ -53,7 +53,11 @@ struct ContentView: View {
                     }
                     .contextMenu {
                         Button("Save to photos", systemImage: "square.and.arrow.down") {
-                            UIImageWriteToSavedPhotosAlbum(model.filteredImage, nil, nil, nil)
+                            ImageSaver.saveToPhotos(model.filteredImage)
+                        }
+                        
+                        Button("Save to files", systemImage: "square.and.arrow.down") {
+                            ImageSaver.saveToFileSystem(model.filteredImage)
                         }
                     }
                 
@@ -99,7 +103,11 @@ struct ContentView: View {
                     }
                     .contextMenu {
                         Button("Save to photos", systemImage: "square.and.arrow.down") {
-                            UIImageWriteToSavedPhotosAlbum(model.filteredImage, nil, nil, nil)
+                            ImageSaver.saveToPhotos(model.filteredImage)
+                        }
+                        
+                        Button("Save to files", systemImage: "square.and.arrow.down") {
+                            ImageSaver.saveToFileSystem(model.filteredImage)
                         }
                     }
             }
@@ -319,7 +327,11 @@ private struct LookupView: View {
                             Label("Filtered CLUT", systemImage: "swatchpalette")
                             
                             Button("Save to photos", systemImage: "square.and.arrow.down") {
-                                UIImageWriteToSavedPhotosAlbum(lookupImage, nil, nil, nil)
+                                ImageSaver.saveToPhotos(lookupImage)
+                            } // Button
+                            
+                            Button("Save to files", systemImage: "square.and.arrow.down") {
+                                ImageSaver.saveToFileSystem(lookupImage)
                             } // Button
                             
                             Button("Clear", systemImage: "xmark.circle.fill", role: .destructive) {
@@ -336,7 +348,11 @@ private struct LookupView: View {
                     if phase.shouldShowButtons {
                         VStack(alignment: .leading, spacing: 6) {
                             Button("Save to photos", systemImage: "square.and.arrow.down") {
-                                UIImageWriteToSavedPhotosAlbum(lookupImage, nil, nil, nil)
+                                ImageSaver.saveToPhotos(lookupImage)
+                            } // Button
+                            
+                            Button("Save to files", systemImage: "square.and.arrow.down") {
+                                ImageSaver.saveToFileSystem(lookupImage)
                             } // Button
                             
                             Button("Clear", systemImage: "xmark.circle.fill", role: .destructive) {
