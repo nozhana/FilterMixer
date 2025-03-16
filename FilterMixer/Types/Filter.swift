@@ -90,6 +90,7 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
     case oldPhoto1
     case oldPhoto15
     case cyberpunk3
+    case f4
     
     var stylizedName: String {
         switch self {
@@ -145,7 +146,8 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
          .tensionGreen,
          .oldPhoto1,
          .oldPhoto15,
-         .cyberpunk3]
+         .cyberpunk3,
+         .f4]
             .contains(self)
     }
     
@@ -398,6 +400,7 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
         case .oldPhoto1: LookupFilter("lookup_old_photo_1")
         case .oldPhoto15: LookupFilter("lookup_old_photo_15")
         case .cyberpunk3: LookupFilter("lookup_cyberpunk_3")
+        case .f4: LookupFilter("lookup_f4")
         }
     }
 }
