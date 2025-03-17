@@ -219,14 +219,18 @@ struct ContentView: View {
                         return true
                     }
                 
-                Button("Generate CLUT", systemImage: "swatchpalette") {
-                    Task {
-                        await model.processLookupImage()
+                VStack {
+                    Button("Generate CLUT", systemImage: "swatchpalette") {
+                        Task {
+                            await model.processLookupImage()
+                        }
                     }
+                    .buttonStyle(.borderedProminent)
+                    .safeAreaPadding(.vertical, 12)
+                    
+                    LookupView(lookupImage: $model.filteredLookupImage)
+                        .frame(height: model.filteredLookupImage == nil ? 0 : 86)
                 }
-                .buttonStyle(.borderedProminent)
-                
-                LookupView(lookupImage: $model.filteredLookupImage)
                 
                 if query.isEmpty {
                     if model.filters.isEmpty {
@@ -318,7 +322,7 @@ private struct LookupView: View {
     var body: some View {
         PhaseAnimator(AnimationPhase.allCases, trigger: lookupImage, content: { phase in
             if let lookupImage {
-                HStack {
+                HStack(spacing: 12) {
                     Image(uiImage: lookupImage)
                         .resizable().scaledToFit()
                         .frame(width: phase.imageSize, height: phase.imageSize)
@@ -364,7 +368,6 @@ private struct LookupView: View {
                         .transition(.move(edge: .trailing).combined(with: .opacity))
                     } // if
                 } // HStack
-                .frame(height: phase.frameHeight)
             } // if
         }, animation: \.animation)
     }
@@ -376,8 +379,8 @@ extension LookupView {
         
         var shouldShowButtons: Bool {
             switch self {
-            case .flashing: false
-            default: true
+            case .idle: true
+            default: false
             }
         }
         
@@ -388,13 +391,9 @@ extension LookupView {
             }
         }
         
-        var frameHeight: CGFloat {
-            86 + 16
-        }
-        
         var imageSize: CGFloat {
             switch self {
-            case .idle, .shrinking: 44
+            case .idle, .shrinking: 52
             case .flashing: 86
             }
         }
