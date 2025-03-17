@@ -69,7 +69,7 @@ struct Defaults<T>: DynamicProperty where T: Codable {
 }
 
 extension Defaults where T == Never {
-    static subscript<V>(_ key: String, store: UserDefaults = .standard) -> V? where V: Codable {
+    static subscript<V>(_ key: String, valueType: V.Type = V.self, store: UserDefaults = .standard) -> V? where V: Codable {
         get {
             guard let data = store.data(forKey: key),
                   let decoded = try? JSONDecoder().decode(V.self, from: data) else { return nil }
@@ -87,7 +87,12 @@ extension Defaults where T == Never {
     
     static subscript<V>(_ keyPath: KeyPath<DefaultsContainer, V>, store: UserDefaults = .standard, container: DefaultsContainer = .shared) -> V where V: Codable {
         get {
-            Defaults["\(keyPath)"] ?? container[keyPath: keyPath]
+            if let value = Defaults["\(keyPath)", V.self] {
+                return value
+            }
+            let value = container[keyPath: keyPath]
+            Defaults["\(keyPath)"] = value
+            return value
         }
         set {
             Defaults["\(keyPath)"] = newValue
