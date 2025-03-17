@@ -59,6 +59,9 @@ private struct FilterParameterView: View {
                         Double(customGetter(operation))
                     } else if let operation = operation as? BasicOperation {
                         Double(operation.uniformSettings[title])
+                    } else if let operation = operation as? CIFilterOperation,
+                              let floatValue = operation.value(forKey: title) as? Float {
+                        Double(floatValue)
                     } else {
                         0
                     }
@@ -67,6 +70,8 @@ private struct FilterParameterView: View {
                         customSetter(operation, Float($0))
                     } else if let operation = operation as? BasicOperation {
                         operation.uniformSettings[title] = Float($0)
+                    } else if let operation = operation as? CIFilterOperation {
+                        operation.setValue(Float($0), forKey: title)
                     }
                     model.processImage()
                 }), in: range, stepCount: stepCount ?? 50)
@@ -79,6 +84,9 @@ private struct FilterParameterView: View {
                             Text(Double(customGetter(operation)).formatted())
                         } else if let operation = operation as? BasicOperation {
                             Text(Double(operation.uniformSettings[title]).formatted())
+                        } else if let operation = operation as? CIFilterOperation,
+                                  let floatValue = operation.value(forKey: title) as? Float {
+                            Text(Double(floatValue).formatted())
                         }
                     }
                     .font(.caption2.bold())

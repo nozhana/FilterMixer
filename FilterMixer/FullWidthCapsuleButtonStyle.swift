@@ -30,9 +30,6 @@ struct FullWidthCapsuleButtonStyle: ButtonStyle {
             .safeAreaPadding(.horizontal, 16)
             .frame(maxWidth: .infinity)
             .background(background(for: configuration), in: .capsule)
-            .shadow(color: .black.opacity(0.06), radius: 16, y: 10)
-            .safeAreaPadding(.vertical, 10)
-            .safeAreaPadding(.horizontal, 16)
     }
 }
 

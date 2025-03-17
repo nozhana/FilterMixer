@@ -20,4 +20,12 @@ extension String {
         .trimmingCharacters(in: .whitespacesAndNewlines)
         .capitalized
     }
+    
+    var filterStylizedNameFormatted: String {
+        if starts(with: "ci") {
+            "CI " + String(dropFirst(2)).camelCaseToReadableFormatted()
+        } else {
+            camelCaseToReadableFormatted()
+        }
+    }
 }

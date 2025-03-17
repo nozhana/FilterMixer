@@ -10,11 +10,9 @@ import SwiftUI
 import PhotosUI
 
 struct ContentView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @StateObject private var model = FilterMixer()
-    @Namespace private var animation
-    @State private var imageToPresent: ImageID?
     @State private var isPipEnabled = false
-    @State private var isShowingPhotosPicker = false
     @State private var isShowingNewRepresentationAlert = false
     @State private var newRepresentationName = ""
     @State private var query = ""
@@ -25,104 +23,17 @@ struct ContentView: View {
         Filter.allCases.filter { !model.filters.contains($0) && $0.stylizedName.lowercased().contains(query.lowercased()) }
     }
     
-    private func loadSelection(_ pickerItem: PhotosPickerItem?) {
-        guard let pickerItem else { return }
-        pickerItem.loadTransferable(type: Data.self) { result in
-            switch result {
-            case .success(let data):
-                guard let data,
-                      let uiImage = UIImage(data: data) else { return }
-                model.originalImage = uiImage
-            case .failure(let error):
-                print("Failed to load photos picker item: \(error.localizedDescription)")
-            }
-        }
-    }
-    
-    @ViewBuilder
-    private var headerView: some View {
-        if isPipEnabled {
-            ZStack(alignment: .topLeading) {
-                Image(uiImage: model.filteredImage)
-                    .resizable()
-                    .scaledToFit()
-                    .matchedTransitionSource(id: ImageID.filteredImage, in: animation)
-                    .matchedGeometryEffect(id: ImageID.filteredImage, in: animation)
-                    .onTapGesture {
-                        imageToPresent = .filteredImage
-                    }
-                    .contextMenu {
-                        Button("Save to photos", systemImage: "square.and.arrow.down") {
-                            ImageSaver.saveToPhotos(model.filteredImage)
-                        }
-                        
-                        Button("Save to files", systemImage: "square.and.arrow.down") {
-                            ImageSaver.saveToFileSystem(model.filteredImage)
-                        }
-                    }
-                
-                Image(uiImage: model.originalImage)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxHeight: 80)
-                    .padding(6)
-                    .matchedTransitionSource(id: ImageID.originalImage, in: animation)
-                    .matchedGeometryEffect(id: ImageID.originalImage, in: animation)
-                    .onTapGesture {
-                        imageToPresent = .originalImage
-                    }
-                    .contextMenu {
-                        Button("Change photo", systemImage: "photo") {
-                            isShowingPhotosPicker = true
-                        }
-                    }
-            }
-        } else {
-            HStack {
-                Image(uiImage: model.originalImage)
-                    .resizable()
-                    .scaledToFit()
-                    .matchedTransitionSource(id: ImageID.originalImage, in: animation)
-                    .matchedGeometryEffect(id: ImageID.originalImage, in: animation)
-                    .onTapGesture {
-                        imageToPresent = .originalImage
-                    }
-                    .contextMenu {
-                        Button("Change photo", systemImage: "photo") {
-                            isShowingPhotosPicker = true
-                        }
-                    }
-                
-                Image(uiImage: model.filteredImage)
-                    .resizable()
-                    .scaledToFit()
-                    .matchedTransitionSource(id: ImageID.filteredImage, in: animation)
-                    .matchedGeometryEffect(id: ImageID.filteredImage, in: animation)
-                    .onTapGesture {
-                        imageToPresent = .filteredImage
-                    }
-                    .contextMenu {
-                        Button("Save to photos", systemImage: "square.and.arrow.down") {
-                            ImageSaver.saveToPhotos(model.filteredImage)
-                        }
-                        
-                        Button("Save to files", systemImage: "square.and.arrow.down") {
-                            ImageSaver.saveToFileSystem(model.filteredImage)
-                        }
-                    }
-            }
-        }
-    }
-    
     @ToolbarContentBuilder
     private var toolbarItems: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) {
-            Button("Picture-in-picture", systemImage: isPipEnabled ? "pip.fill" : "pip") {
-                withAnimation(.snappy) {
-                    isPipEnabled.toggle()
+        if horizontalSizeClass != .compact {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Picture-in-picture", systemImage: isPipEnabled ? "pip.fill" : "pip") {
+                    withAnimation(.snappy) {
+                        isPipEnabled.toggle()
+                    }
                 }
-            }
-        }
+            } // ToolbarItem
+        } // if
         
         ToolbarItem(placement: .topBarTrailing) {
             Menu("Representations", systemImage: "archivebox") {
@@ -140,8 +51,8 @@ struct ContentView: View {
                         Button("Delete", systemImage: "trash", role: .destructive) {
                             representations.removeValue(forKey: key)
                         }
-                    }
-                }
+                    } // Menu
+                } // ForEach
                 
                 if !representations.isEmpty {
                     Button("Clear all", systemImage: "trash.fill", role: .destructive) {
@@ -159,7 +70,7 @@ struct ContentView: View {
                     Label("Choose a filter to get started.", systemImage: "camera.filters")
                         .foregroundStyle(.secondary)
                 }
-            }
+            } // Menu
             .alert("New filter stack", isPresented: $isShowingNewRepresentationAlert) {
                 TextField("My filter stack", text: $newRepresentationName)
                 Button("Cancel", role: .cancel) {
@@ -175,8 +86,8 @@ struct ContentView: View {
                 }
             } message: {
                 Text("Choose a name for your new filter stack.")
-            }
-        }
+            } // alert/message
+        } // ToolbarItem
         
         ToolbarItem(placement: .topBarTrailing) {
             Menu("Add Filters", systemImage: "plus.circle.fill") {
@@ -188,20 +99,30 @@ struct ContentView: View {
                     }
                 }
                 
+                Menu("CIFilters", systemImage: "camera.filters") {
+                    ForEach(Filter.ciFilters.filter { !model.filters.contains($0) }) { filter in
+                        Button(filter.stylizedName, systemImage: "plus.circle") {
+                            model.filters.append(filter)
+                        }
+                    }
+                }
+                
+                Divider()
+                
                 ForEach(Filter.genericFilters.filter { !model.filters.contains($0) }) { filter in
                     Button(filter.stylizedName, systemImage: "plus.circle") {
                         model.filters.append(filter)
                     }
                 }
-            }
-        }
+            } // Menu
+        } // ToolbarItem
     }
     
     var body: some View {
         NavigationStack {
             VStack {
-                headerView
-                    .safeAreaPadding(.horizontal, 16)
+                HeaderView(isPipEnabled: isPipEnabled)
+                    .environmentObject(model)
                     .onDrop(of: [.image], isTargeted: nil) { providers in
                         for provider in providers {
                             _ = provider.loadTransferable(type: Data.self) { result in
@@ -218,19 +139,6 @@ struct ContentView: View {
                         }
                         return true
                     }
-                
-                VStack {
-                    Button("Generate CLUT", systemImage: "swatchpalette") {
-                        Task {
-                            await model.processLookupImage()
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .safeAreaPadding(.vertical, 12)
-                    
-                    LookupView(lookupImage: $model.filteredLookupImage)
-                        .frame(height: model.filteredLookupImage == nil ? 0 : 86)
-                }
                 
                 if query.isEmpty {
                     if model.filters.isEmpty {
@@ -272,19 +180,13 @@ struct ContentView: View {
                     }
                     .font(.system(size: 19, weight: .medium))
                     .buttonStyle(.fullWidthCapsule)
+                    .shadow(color: .black.opacity(0.06), radius: 16, y: 10)
+                    .safeAreaPadding(.vertical, 10)
+                    .safeAreaPadding(.horizontal, 16)
                     .background(.ultraThinMaterial, ignoresSafeAreaEdges: .all)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .sheet(item: $imageToPresent) { imageId in
-                let image = imageId == .originalImage ? model.originalImage : model.filteredImage
-                
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .navigationTransition(.zoom(sourceID: imageId, in: animation))
-            }
-            .photosPicker(isPresented: $isShowingPhotosPicker, selection: Binding(get: { nil }, set: { loadSelection($0) }), matching: .images)
             .toolbar {
                 toolbarItems
             }
@@ -312,21 +214,24 @@ struct ContentView: View {
     ContentView()
 }
 
-enum ImageID: String, Identifiable {
-    case originalImage, filteredImage
-}
-
 private struct LookupView: View {
     @Binding var lookupImage: UIImage?
+    
+    @Namespace private var lookupTransition
+    @State private var isPresentingLookupImage = false
     
     var body: some View {
         PhaseAnimator(AnimationPhase.allCases, trigger: lookupImage, content: { phase in
             if let lookupImage {
-                HStack(spacing: 12) {
+                VStack(spacing: 12) {
                     Image(uiImage: lookupImage)
                         .resizable().scaledToFit()
                         .frame(width: phase.imageSize, height: phase.imageSize)
                         .clipShape(.rect(cornerRadius: phase.cornerRadius))
+                        .matchedTransitionSource(id: "lookupImage", in: lookupTransition)
+                        .onTapGesture {
+                            isPresentingLookupImage = true
+                        }
                         .contextMenu {
                             Label("Filtered CLUT", systemImage: "swatchpalette")
                             
@@ -364,12 +269,19 @@ private struct LookupView: View {
                                     self.lookupImage = nil
                                 }
                             } // Button
-                        } // HStack
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                        } // VStack
+                        .buttonStyle(.borderedProminent)
+                        .buttonBorderShape(.capsule)
+                        .font(.system(size: 14, weight: .medium))
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     } // if
-                } // HStack
+                } // VStack
+                .transition(.move(edge: .trailing).combined(with: .opacity))
             } // if
         }, animation: \.animation)
+        .sheet(isPresented: $isPresentingLookupImage) {
+            LookupFullscreenView(lookupImage: $lookupImage, lookupTransition: lookupTransition)
+        }
     }
 }
 
@@ -403,6 +315,241 @@ extension LookupView {
             case .idle: .smooth.delay(0.25)
             case .flashing: .snappy
             case .shrinking: .smooth(duration: 0.5).delay(0.5)
+            }
+        }
+    }
+}
+
+private struct LookupFullscreenView: View {
+    @Binding var lookupImage: UIImage?
+    var lookupTransition: Namespace.ID
+    
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            if let lookupImage {
+                Image(uiImage: lookupImage)
+                    .resizable().scaledToFit()
+                    .clipShape(.rect(cornerRadius: 12))
+                    .frame(maxWidth: 400, maxHeight: 400)
+                    .navigationTransition(.zoom(sourceID: "lookupImage", in: lookupTransition))
+                
+                Label("Filtered Color Lookup Table", systemImage: "swatchpalette")
+                    .font(.title2.bold())
+                    .foregroundStyle(.secondary)
+                
+                Group {
+                    HStack {
+                        Button("Save to photos", systemImage: "square.and.arrow.down") {
+                            ImageSaver.saveToPhotos(lookupImage)
+                        } // Button
+                        
+                        Button("Save to files", systemImage: "square.and.arrow.down") {
+                            ImageSaver.saveToFileSystem(lookupImage)
+                        } // Button
+                    } // HStack
+                    
+                    Button("Clear", systemImage: "xmark.circle.fill", role: .destructive) {
+                        withAnimation(.snappy) {
+                            self.lookupImage = nil
+                            dismiss()
+                        }
+                    } // Button
+                } // Group
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
+                .font(.system(size: 16, weight: .bold))
+            } else {
+                ContentUnavailableView("Failed to load Color Lookup Table.", systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .safeAreaPadding(.horizontal, 16)
+    }
+}
+
+private struct HeaderView: View {
+    var isPipEnabled: Bool
+    
+    @EnvironmentObject private var model: FilterMixer
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Namespace private var imageTransition
+    @State private var imageToPresent: ImageID?
+    @State private var isPresentingPhotosPicker = false
+    
+    private func loadSelection(pickerItem: PhotosPickerItem?) {
+        pickerItem?.loadImage { image in
+            model.originalImage = image
+        }
+    }
+    
+    private var spacing: CGFloat {
+        isPipEnabled ? -16 - (originalImageSize ?? 0) : 16
+    }
+    
+    private var originalImageSize: CGFloat? {
+        isPipEnabled ? 86 : nil
+    }
+    
+    private var cornerRadius: CGFloat {
+        isPipEnabled ? 8 : 16
+    }
+    
+    private var regularSizedContent: some View {
+        HStack(alignment: .top, spacing: spacing) {
+            if isPipEnabled {
+                Spacer()
+            }
+            
+            Image(uiImage: model.originalImage)
+                .resizable().scaledToFit()
+                .frame(maxWidth: originalImageSize, maxHeight: originalImageSize)
+                .clipShape(.rect(cornerRadius: cornerRadius))
+                .padding(.top, isPipEnabled ? 16 : 0)
+                .matchedTransitionSource(id: ImageID.originalImage, in: imageTransition)
+                .onTapGesture {
+                    imageToPresent = .originalImage
+                }
+                .contextMenu {
+                    Label("Original image", systemImage: "photo")
+                    
+                    Button("Choose new photo", systemImage: "photo") {
+                        isPresentingPhotosPicker = true
+                    }
+                }
+                .zIndex(1)
+            
+            Image(uiImage: model.filteredImage)
+                .resizable().scaledToFit()
+                .clipShape(.rect(cornerRadius: 16))
+                .matchedTransitionSource(id: ImageID.filteredImage, in: imageTransition)
+                .onTapGesture {
+                    imageToPresent = .filteredImage
+                }
+                .contextMenu {
+                    Label("Filtered image", systemImage: "photo.on.rectangle")
+                    
+                    Button("Save to photos", systemImage: "square.and.arrow.down") {
+                        ImageSaver.saveToPhotos(model.filteredImage)
+                    }
+                    
+                    Button("Save to files", systemImage: "archivebox") {
+                        ImageSaver.saveToFileSystem(model.filteredImage)
+                    }
+                }
+                .zIndex(0)
+            
+            Spacer()
+        } // HStack
+    }
+    
+    private var compactSizedContent: some View {
+        VStack(spacing: 12) {
+            Image(uiImage: model.originalImage)
+                .resizable().scaledToFit()
+                .clipShape(.rect(cornerRadius: 12))
+                .matchedTransitionSource(id: ImageID.originalImage, in: imageTransition)
+                .onTapGesture {
+                    imageToPresent = .originalImage
+                }
+                .contextMenu {
+                    Label("Original image", systemImage: "photo")
+                    
+                    Button("Choose new photo", systemImage: "photo") {
+                        isPresentingPhotosPicker = true
+                    }
+                }
+            
+            Image(uiImage: model.filteredImage)
+                .resizable().scaledToFit()
+                .clipShape(.rect(cornerRadius: 12))
+                .matchedTransitionSource(id: ImageID.filteredImage, in: imageTransition)
+                .onTapGesture {
+                    imageToPresent = .filteredImage
+                }
+                .contextMenu {
+                    Label("Filtered image", systemImage: "photo.on.rectangle")
+                    
+                    Button("Save to photos", systemImage: "square.and.arrow.down") {
+                        ImageSaver.saveToPhotos(model.filteredImage)
+                    }
+                    
+                    Button("Save to files", systemImage: "archivebox") {
+                        ImageSaver.saveToFileSystem(model.filteredImage)
+                    }
+                }
+        } // VStack
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    var body: some View {
+        Group {
+            switch horizontalSizeClass {
+            case .compact: compactSizedContent
+            default: regularSizedContent
+            }
+        }
+        .safeAreaInset(edge: .trailing, spacing: 12) {
+            VStack(spacing: 12) {
+                Button("Generate CLUT", systemImage: "swatchpalette") {
+                    Task { await model.processLookupImage() }
+                }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
+                .font(.system(size: 14, weight: .medium))
+                
+                Spacer()
+                
+                LookupView(lookupImage: $model.filteredLookupImage)
+                
+                Spacer()
+            }
+        }
+        .safeAreaPadding(12)
+        .sheet(item: $imageToPresent) { imageId in
+            let image = imageId == .originalImage ? model.originalImage : model.filteredImage
+            
+            VStack {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .clipShape(.rect(cornerRadius: 8))
+                    .navigationTransition(.zoom(sourceID: imageId, in: imageTransition))
+                
+                switch imageId {
+                case .originalImage:
+                    Label("Original image", systemImage: "photo")
+                case .filteredImage:
+                    Label("Filtered image", systemImage: "photo.on.rectangle")
+                }
+            }
+            .safeAreaPadding(.horizontal, 16)
+            .font(.title2.bold())
+            .foregroundStyle(.secondary)
+        }
+        .photosPicker(isPresented: $isPresentingPhotosPicker, selection: Binding(get: { nil }, set: loadSelection), matching: .images)
+    }
+}
+
+private enum ImageID: String, Identifiable {
+    case originalImage, filteredImage
+}
+
+private extension PhotosPickerItem {
+    func loadImage(completion: @escaping (UIImage) -> Void) {
+        loadTransferable(type: Data.self) { result in
+            switch result {
+            case .success(let data?):
+                guard let uiImage = UIImage(data: data) else {
+                    print("Failed to construct UIImage from data: \(data)")
+                    return
+                }
+                completion(uiImage)
+            case .success(nil):
+                break
+            case .failure(let error):
+                print("Failed to load data from picker item: \(error)")
             }
         }
     }

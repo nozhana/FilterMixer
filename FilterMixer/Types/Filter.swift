@@ -92,6 +92,16 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
     case cyberpunk3
     case f4
     
+    // CIFilters
+    case ciGaussianBlur
+    case ciUnsharpMask
+    case ciHueAdjust
+    case ciGloom
+    case ciComicEffect
+    case ciBokehEffect
+    case ciPixellate
+    case ciHexagonalPixellate
+    
     var stylizedName: String {
         switch self {
         case .iosBlur: "iOS Blur"
@@ -109,11 +119,11 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
         case .oldPhoto1: "Old Photo 1"
         case .oldPhoto15: "Old Photo 15"
         case .cyberpunk3: "Cyberpunk 3"
-        default: rawValue.camelCaseToReadableFormatted()
+        default: rawValue.filterStylizedNameFormatted
         }
     }
     
-    var isBasicLookupFilter: Bool {
+    var isLookupFilter: Bool {
         [.amatorka,
          .missEtitake,
          .softElegance,
@@ -151,12 +161,20 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
             .contains(self)
     }
     
+    var isCiFilterOperation: Bool {
+        stylizedName.starts(with: "CI")
+    }
+    
     static var genericFilters: [Filter] {
-        allCases.filter { !$0.isBasicLookupFilter }
+        allCases.filter { !$0.isLookupFilter && !$0.isCiFilterOperation }
     }
     
     static var lookupFilters: [Filter] {
-        allCases.filter(\.isBasicLookupFilter)
+        allCases.filter(\.isLookupFilter)
+    }
+    
+    static var ciFilters: [Filter] {
+        allCases.filter(\.isCiFilterOperation)
     }
     
     var parameters: [FilterParameter] {
@@ -316,7 +334,27 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
         case .zoomBlur:
             [.slider(title: "size", range: 0...40),
              .position(title: "blurCenter") { ($0 as! ZoomBlur).blurCenter } setter: { ($0 as! ZoomBlur).blurCenter = $1 }]
-        default: isBasicLookupFilter ? [.slider(title: "intensity", range: 0...1, stepCount: 50)] : []
+        case .ciGaussianBlur:
+            [.slider(title: "radius", range: 1...60, customGetter: { ($0 as! CIGaussianBlurOperation).radius }, customSetter: { ($0 as! CIGaussianBlurOperation).radius = $1 })]
+        case .ciUnsharpMask:
+            [.slider(title: "radius", range: 0...20, customGetter: { ($0 as! CIUnsharpMaskOperation).radius }, customSetter: { ($0 as! CIUnsharpMaskOperation).radius = $1 }),
+             .slider(title: "intensity", range: 0...20, customGetter: { ($0 as! CIUnsharpMaskOperation).intensity }, customSetter: { ($0 as! CIUnsharpMaskOperation).intensity = $1 })]
+        case .ciHueAdjust:
+            [.slider(title: "angle", range: 0...180, customGetter: { Float(($0 as! CIHueAdjustOperation).angle.degrees) }, customSetter: { ($0 as! CIHueAdjustOperation).angle = .degrees(Double($1)) })]
+        case .ciGloom:
+            []
+        case .ciComicEffect:
+            []
+        case .ciBokehEffect:
+            [.slider(title: "ringSize", range: 0.1...5),
+             .slider(title: "ringAmount", range: 0...10),
+             .slider(title: "softness", range: 0...10),
+             .slider(title: "radius", range: 1...60)]
+        case .ciPixellate:
+            [.slider(title: "scale", range: 0.1...60)]
+        case .ciHexagonalPixellate:
+            [.slider(title: "scale", range: 0.1...60)]
+        default: isLookupFilter ? [.slider(title: "intensity", range: 0...1, stepCount: 50)] : []
         }
     }
     
@@ -401,6 +439,15 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
         case .oldPhoto15: LookupFilter("lookup_old_photo_15")
         case .cyberpunk3: LookupFilter("lookup_cyberpunk_3")
         case .f4: LookupFilter("lookup_f4")
+        // CIFilterOperations
+        case .ciGaussianBlur: CIGaussianBlurOperation()
+        case .ciUnsharpMask: CIUnsharpMaskOperation()
+        case .ciHueAdjust: CIHueAdjustOperation()
+        case .ciGloom: CIFilterOperation(.gloom())
+        case .ciComicEffect: CIFilterOperation(.comicEffect())
+        case .ciBokehEffect: CIFilterOperation(.bokehBlur())
+        case .ciPixellate: CIFilterOperation(.pixellate())
+        case .ciHexagonalPixellate: CIFilterOperation(.hexagonalPixellate())
         }
     }
 }

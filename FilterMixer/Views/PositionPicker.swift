@@ -43,7 +43,8 @@ struct PositionPicker: View {
                                     position = .center
                                 }
                             }
-                    )
+                    ),
+                including: .gesture
             )
             .clipShape(.rect(cornerRadius: 8))
         } // GeometryReader
