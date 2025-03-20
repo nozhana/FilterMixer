@@ -9,6 +9,7 @@ import CoreImage.CIFilterBuiltins
 import GPUImage
 import SwiftUI
 import PhotosUI
+import TipKit
 
 struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -22,7 +23,15 @@ struct ContentView: View {
     @State private var lookups: [URL] = []
     
     @Defaults(\.isRegularSlider) private var isRegularSlider
-    @Defaults(\.representations) var representations
+    @Defaults(\.representations) private var representations
+    
+    private let addFilterTip = AddFilterTip()
+    private let enablePipTip = EnablePipTip()
+    private let changeSourceImageTip = ChangeSourceImageTip()
+    private let addLookupImageTip = AddLookupImageTip()
+    private let reorderFiltersTip = ReorderFiltersTip()
+    private let reorderCustomClutsTip = ReorderCustomClutsTip()
+    private let reorderCustomCIFiltersTip = ReorderCustomCIFiltersTip()
     
     var searchResults: [Filter] {
         Filter.allCases.filter { !model.filters.contains($0) && $0.stylizedName.lowercased().contains(query.lowercased()) }
@@ -39,8 +48,10 @@ struct ContentView: View {
                 Button("Picture-in-picture", systemImage: isPipEnabled ? "pip.fill" : "pip") {
                     withAnimation(.snappy) {
                         isPipEnabled.toggle()
+                        enablePipTip.invalidate(reason: .actionPerformed)
                     }
                 }
+                .popoverTip(enablePipTip, arrowEdge: .top)
             } // ToolbarItem
         } // if
         
@@ -122,6 +133,8 @@ struct ContentView: View {
                                         guard let data = try? Data(contentsOf: url),
                                               let image = UIImage(data: data) else { return }
                                         model.customLookupImages.append(image)
+                                        addFilterTip.invalidate(reason: .actionPerformed)
+                                        ReorderCustomClutsTip.addClutEvent.sendDonation()
                                     }
                                     
                                     Button("Delete", systemImage: "trash", role: .destructive) {
@@ -137,6 +150,8 @@ struct ContentView: View {
                         ForEach(Filter.lookupFilters.filter { !model.filters.contains($0) }) { filter in
                             Button(filter.stylizedName, systemImage: "plus.circle") {
                                 model.filters.append(filter)
+                                addFilterTip.invalidate(reason: .actionPerformed)
+                                ReorderFiltersTip.addFilterEvent.sendDonation()
                             }
                         }
                     }
@@ -146,6 +161,8 @@ struct ContentView: View {
                     ForEach(Filter.ciFilters.filter { !model.filters.contains($0) }) { filter in
                         Button(filter.stylizedName, systemImage: "plus.circle") {
                             model.filters.append(filter)
+                            addFilterTip.invalidate(reason: .actionPerformed)
+                            ReorderCustomCIFiltersTip.addCIFilterEvent.sendDonation()
                         }
                     }
                 }
@@ -155,9 +172,12 @@ struct ContentView: View {
                 ForEach(Filter.genericFilters.filter { !model.filters.contains($0) }) { filter in
                     Button(filter.stylizedName, systemImage: "plus.circle") {
                         model.filters.append(filter)
+                        addFilterTip.invalidate(reason: .actionPerformed)
+                        ReorderFiltersTip.addFilterEvent.sendDonation()
                     }
                 }
             } // Menu
+            .popoverTip(addFilterTip, arrowEdge: .top)
         } // ToolbarItem
     }
     
@@ -196,9 +216,11 @@ struct ContentView: View {
                             }
                         }
                         .onDrop(of: [.image], delegate: HeaderViewDropDelegate(geometry: proxy, hasImage: $isDroppingImage, isHoveringOnTheRightHalf: $isHoveringOnTheRightHalf, lookupImageDropped: { image in
+                            addLookupImageTip.invalidate(reason: .actionPerformed)
                             DocumentStore.shared.saveLookupImage(image)
                             lookups = DocumentStore.shared.getAllLookupImageURLs()
                         }, sourceImageDropped: { image in
+                            changeSourceImageTip.invalidate(reason: .actionPerformed)
                             model.originalImage = image
                         }))
                 }
@@ -212,6 +234,7 @@ struct ContentView: View {
                     } else {
                         List {
                             Section("Custom CIFilters") {
+                                TipView(reorderCustomCIFiltersTip)
                                 ForEach(model.customCIFilters.map(\.name), id: \.self) { filterName in
                                     Button(filterName, systemImage: "minus.circle.fill") {
                                         model.customCIFilters.removeAll(where: { $0.name == filterName })
@@ -219,26 +242,31 @@ struct ContentView: View {
                                 }
                                 .onMove { fromOffsets, toOffset in
                                     model.customCIFilters.move(fromOffsets: fromOffsets, toOffset: toOffset)
+                                    reorderCustomCIFiltersTip.invalidate(reason: .actionPerformed)
                                 }
                             }
                             
                             Section("Custom CLUTS") {
+                                TipView(reorderCustomClutsTip)
                                 ForEach(0..<model.customLookupImages.count, id: \.self) { index in
                                     CustomLookupSectionView(index: index, isRegularSlider: isRegularSlider)
                                         .environmentObject(model)
                                 }
                                 .onMove { fromOffsets, toOffset in
                                     model.customLookupImages.move(fromOffsets: fromOffsets, toOffset: toOffset)
+                                    reorderCustomClutsTip.invalidate(reason: .actionPerformed)
                                 }
                             }
                             
                             Section("Active Filters") {
+                                TipView(reorderFiltersTip)
                                 ForEach(model.filters) { filter in
                                     FilterSectionView(filter: filter, isRegularSlider: isRegularSlider)
                                         .environmentObject(model)
                                 }
                                 .onMove { fromOffsets, toOffset in
                                     model.filters.move(fromOffsets: fromOffsets, toOffset: toOffset)
+                                    reorderFiltersTip.invalidate(reason: .actionPerformed)
                                 }
                             }
                         }
@@ -503,6 +531,9 @@ private struct HeaderView: View {
     @State private var imageToPresent: ImagePresentationID?
     @State private var isPresentingPhotosPicker = false
     
+    private let changeSourceImageTip = ChangeSourceImageTip()
+    private let addLookupImageTip = AddLookupImageTip()
+    
     private func loadSelection(pickerItem: PhotosPickerItem?) {
         pickerItem?.loadImage { image in
             model.originalImage = image
@@ -552,6 +583,7 @@ private struct HeaderView: View {
                         isPresentingPhotosPicker = true
                     }
                 }
+                .popoverTip(changeSourceImageTip, arrowEdge: .top)
                 .zIndex(1)
                 
                 Group {
@@ -582,6 +614,7 @@ private struct HeaderView: View {
                         ImageSaver.saveToFileSystem(model.filteredImage)
                     }
                 }
+                .popoverTip(addLookupImageTip, arrowEdge: .top)
                 .zIndex(0)
                 
                 Spacer()

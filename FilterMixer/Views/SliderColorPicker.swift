@@ -42,7 +42,7 @@ struct SliderColorPicker: View {
                                 Text("1.0")
                             }
                         } else {
-                            WheelSlider(value: binding, in: 0...1, step: 0.02)
+                            WheelSlider(value: binding, in: 0...1, step: 0.02, curved: false)
                         }
                     }
                     .onChange(of: internalColor) { _, newValue in

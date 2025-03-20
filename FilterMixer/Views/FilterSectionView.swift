@@ -87,7 +87,7 @@ struct FilterParameterView: View {
                         Text(range.upperBound.formatted())
                     }
                 } else {
-                    WheelSlider(value: binding, in: range, stepCount: stepCount ?? 50)
+                    WheelSlider(value: binding, in: range, stepCount: stepCount ?? 50, curved: false)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
                         .offset(y: 6)
