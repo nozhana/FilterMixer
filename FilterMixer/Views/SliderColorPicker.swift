@@ -11,11 +11,13 @@ import SwiftUI
 struct SliderColorPicker: View {
     var title: String
     @Binding var gpuImageColor: GPUImage.Color
+    var isRegularSlider = false
     
     @State private var internalColor: GPUImage.Color
     
-    init(_ title: String, color: Binding<GPUImage.Color>) {
+    init(_ title: String, color: Binding<GPUImage.Color>, isRegularSlider: Bool = false) {
         self.title = title
+        self.isRegularSlider = isRegularSlider
         _gpuImageColor = color
         _internalColor = .init(initialValue: color.wrappedValue)
     }
@@ -29,10 +31,23 @@ struct SliderColorPicker: View {
                     Text(component.rawValue.capitalized).font(.subheadline)
                     Spacer()
                     Text(internalColor[component].formatted()).font(.caption).foregroundStyle(.yellow)
-                    WheelSlider(value: Binding(get: { internalColor[component] }, set: { internalColor[component] = $0 }), in: 0...1, step: 0.02)
-                        .onChange(of: internalColor) { _, newValue in
-                            gpuImageColor = newValue
+                    let binding = Binding(get: { internalColor[component] }, set: { internalColor[component] = $0 })
+                    Group {
+                        if isRegularSlider {
+                            Slider(value: binding, in: 0...1) {
+                                Text(binding.wrappedValue.formatted())
+                            } minimumValueLabel: {
+                                Text("0.0")
+                            } maximumValueLabel: {
+                                Text("1.0")
+                            }
+                        } else {
+                            WheelSlider(value: binding, in: 0...1, step: 0.02)
                         }
+                    }
+                    .onChange(of: internalColor) { _, newValue in
+                        gpuImageColor = newValue
+                    }
                 }
             }
         }

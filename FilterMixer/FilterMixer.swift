@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CoreImage.CIFilter
 import GPUImage
 import class UIKit.UIImage
 
@@ -20,6 +21,24 @@ final class FilterMixer: ObservableObject {
     @MainActor @Published var filteredLookupImage: UIImage?
     
     @Published var filters: [Filter] = [] {
+        didSet {
+            configurePipeline()
+        }
+    }
+    
+    @Published var customLookupImages: [UIImage] = [] {
+        didSet {
+            configurePipeline()
+        }
+    }
+    
+    @Published var isLiveMode = false {
+        didSet {
+            configurePipeline()
+        }
+    }
+    
+    @Published var customCIFilters: [CIFilter] = [] {
         didSet {
             configurePipeline()
         }
@@ -40,9 +59,19 @@ final class FilterMixer: ObservableObject {
     }()
     
     private(set) var operations: [ImageProcessingOperation] = []
+    private(set) var customLookupOperations: [ImageProcessingOperation] = []
+    
     private var operationGroup: OperationGroup?
+    private var customLookupsOperationGroup: OperationGroup?
+    private var customCIFilterStackOperation: CIFilterStackOperation?
+    
+    let camera = try? Camera(sessionPreset: .hd1920x1080)
+    let renderView = RenderView(frame: .init(origin: .zero, size: .init(width: 1080, height: 1920)), device: nil)
+    let presentationRenderView = RenderView(frame: .init(origin: .zero, size: .init(width: 1080, height: 1920)), device: nil)
     
     init() {
+        // camera?.runBenchmark = true
+        // camera?.logFPS = true
         configurePipeline()
     }
     
@@ -52,7 +81,14 @@ final class FilterMixer: ObservableObject {
     }
     
     func processLookupImage() async {
-        let filtered = await operationRepresentation?.lookupImage
+        let lookupOps = customLookupImages.map { LookupFilter($0) }
+        let originalLookup = UIImage(named: "lookup")!
+        let intermediate = await withCheckedContinuation { continuation in
+            originalLookup.filterWithOperationsAsynchronously(lookupOps) { result in
+                continuation.resume(returning: result)
+            }
+        }
+        let filtered = await operationRepresentation?.apply(to: intermediate)
         await MainActor.run {
             filteredLookupImage = filtered
         }
@@ -60,17 +96,60 @@ final class FilterMixer: ObservableObject {
     
     func configurePipeline() {
         operationGroup?.removeAllTargets()
+        customLookupsOperationGroup?.removeAllTargets()
+        
         operationGroup = OperationGroup()
+        customLookupsOperationGroup = OperationGroup()
+        
         operations.forEach { $0.removeAllTargets() }
-        operations = filters.map { $0.makeOperation() }
+        customLookupOperations.forEach { $0.removeAllTargets() }
+        
+        operations = filters.map { $0.makeOperation(parameters: ["extent": originalImage.size.applying(.init(scaleX: originalImage.scale, y: originalImage.scale))]) }
+        customLookupOperations = customLookupImages.map { LookupFilter($0) }
+        
         restoreCachedRepresentation()
+        
         operationGroup!.configureGroup(withOperations: operations)
+        customLookupsOperationGroup!.configureGroup(withOperations: customLookupOperations)
         
-        inputImage?.removeAllTargets()
-        inputImage = PictureInput(image: originalImage)
+        customCIFilterStackOperation?.removeAllTargets()
+        customCIFilterStackOperation = CIFilterStackOperation(customCIFilters)
         
-        inputImage! -->> operationGroup! -->> outputImage
-        inputImage!.processImage()
+        if isLiveMode {
+            if let camera {
+                camera.removeAllTargets()
+                camera -->> customCIFilterStackOperation! -->> customLookupsOperationGroup! -->> operationGroup! -->> renderView
+                operationGroup! --> presentationRenderView
+            }
+            
+            camera?.startCapture()
+        } else {
+            camera?.stopCapture()
+            inputImage?.removeAllTargets()
+            
+            inputImage = PictureInput(image: originalImage)
+            
+            // if let ciImage = originalImage.inferredCIImage {
+            //     let filtered = customCIFilters.reduce(into: ciImage) { partialResult, filter in
+            //         filter.setValue(partialResult, forKey: kCIInputImageKey)
+            //         if let outputImage = filter.outputImage?.cropped(to: partialResult.extent) {
+            //             partialResult = outputImage
+            //         }
+            //     }
+            //     let context = CIContext(mtlDevice: sharedMetalRenderingDevice.device)
+            //     if let cgImage = context.createCGImage(filtered, from: filtered.extent) {
+            //         inputImage = PictureInput(image: cgImage)
+            //     } else {
+            //         inputImage = PictureInput(image: originalImage)
+            //     }
+            // } else {
+            //     inputImage = PictureInput(image: originalImage)
+            // }
+            
+            inputImage! -->> customCIFilterStackOperation! -->> customLookupsOperationGroup! -->> operationGroup! -->> outputImage
+            inputImage!.processImage()
+        }
+        
         cacheRepresentation()
     }
     
@@ -85,7 +164,7 @@ final class FilterMixer: ObservableObject {
         guard let operationRepresentation else { return }
         operationRepresentation.items.forEach { item in
             if let filterIndex = filters.firstIndex(of: item.filter),
-               let operation = operations[safe: filterIndex] as? BasicOperation {
+               let operation = operations[safe: filterIndex] {
                 item.filter.parameters.forEach { parameter in
                     switch parameter {
                     case .slider(let title, _, _, _, let customSetter):
@@ -93,8 +172,10 @@ final class FilterMixer: ObservableObject {
                            case .float(let float) = value {
                             if let customSetter {
                                 customSetter(operation, float)
-                            } else {
+                            } else if let operation = operation as? BasicOperation {
                                 operation.uniformSettings[title] = float
+                            } else if let operation = operation as? CIFilterOperation {
+                                operation.setValue(float, forKey: title)
                             }
                         }
                     case .position(let title, _, let setter):
@@ -123,13 +204,23 @@ final class FilterMixer: ObservableObject {
         
         filters.indices.forEach { index in
             guard let filter = filters[safe: index],
-                  let operation = operations[safe: index] as? BasicOperation else { return }
+                  let operation = operations[safe: index] else { return }
             
             let parameterValues = filter.parameters.reduce(into: [String: OperationRepresentation.Item.Parameter]()) { partialResult, parameter in
                 switch parameter {
                 case .slider(let title, _, _, let customGetter, _):
-                    let float = customGetter?(operation) ?? operation.uniformSettings[title]
-                    partialResult[title] = .float(float)
+                    var floatValue: Float?
+                    if let float = customGetter?(operation) {
+                        floatValue = float
+                    } else if let operation = operation as? BasicOperation {
+                        floatValue = operation.uniformSettings[title]
+                    } else if let operation = operation as? CIFilterOperation {
+                        floatValue = operation.value(forKey: title) as? Float
+                    }
+                    
+                    if let floatValue {
+                        partialResult[title] = .float(floatValue)
+                    }
                 case .color(let title, let getter, _):
                     let color = getter(operation)
                     partialResult[title] = .color(color)
@@ -214,45 +305,44 @@ struct OperationRepresentation: CustomStringConvertible, Codable {
         items.enumerated().map { String($0.offset + 1) + $0.element.description }.joined(separator: "\n\n")
     }
     
-    var lookupImage: UIImage {
-        get async {
-            let lookup = UIImage(named: "lookup")!
-            let ops = items.map(\.filter).map { $0.makeOperation() }
-            for (item, operation) in zip(items, ops) {
-                for parameter in item.filter.parameters {
-                    switch parameter {
-                    case .slider(let title, _, _, _, let customSetter):
-                        if let parameterValue = item.parameterValues[title],
-                           case .float(let float) = parameterValue {
-                            if let customSetter {
-                                customSetter(operation, float)
-                            } else if let operation = operation as? BasicOperation {
-                                operation.uniformSettings[title] = float
-                            }
+    func apply(to image: UIImage) async -> UIImage {
+        let ops = items.map(\.filter).map { $0.makeOperation(parameters: ["extent": image.size.applying(.init(scaleX: image.scale, y: image.scale))]) }
+        for (item, operation) in zip(items, ops) {
+            for parameter in item.filter.parameters {
+                switch parameter {
+                case .slider(let title, _, _, _, let customSetter):
+                    if let parameterValue = item.parameterValues[title],
+                       case .float(let float) = parameterValue {
+                        if let customSetter {
+                            customSetter(operation, float)
+                        } else if let operation = operation as? BasicOperation {
+                            operation.uniformSettings[title] = float
+                        } else if let operation = operation as? CIFilterOperation {
+                            operation.setValue(float, forKey: title)
                         }
-                    case .color(let title, _, let setter):
-                        if let parameterValue = item.parameterValues[title],
-                           case .color(let color) = parameterValue {
-                            setter(operation, color)
-                        }
-                    case .position(let title, _, let setter):
-                        if let parameterValue = item.parameterValues[title],
-                           case .position(let position) = parameterValue {
-                            setter(operation, position)
-                        }
-                    case .size(let title, _, let setter):
-                        if let parameterValue = item.parameterValues[title],
-                           case .size(let size) = parameterValue {
-                            setter(operation, size)
-                        }
+                    }
+                case .color(let title, _, let setter):
+                    if let parameterValue = item.parameterValues[title],
+                       case .color(let color) = parameterValue {
+                        setter(operation, color)
+                    }
+                case .position(let title, _, let setter):
+                    if let parameterValue = item.parameterValues[title],
+                       case .position(let position) = parameterValue {
+                        setter(operation, position)
+                    }
+                case .size(let title, _, let setter):
+                    if let parameterValue = item.parameterValues[title],
+                       case .size(let size) = parameterValue {
+                        setter(operation, size)
                     }
                 }
             }
-            
-            return await withCheckedContinuation { continuation in
-                lookup.filterWithOperationsAsynchronously(ops) { image in
-                    continuation.resume(returning: image)
-                }
+        }
+        
+        return await withCheckedContinuation { continuation in
+            image.filterWithOperationsAsynchronously(ops) { image in
+                continuation.resume(returning: image)
             }
         }
     }

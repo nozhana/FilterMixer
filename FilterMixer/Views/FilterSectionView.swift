@@ -10,6 +10,7 @@ import SwiftUI
 
 struct FilterSectionView: View {
     var filter: Filter
+    var isRegularSlider = false
     
     @EnvironmentObject private var model: FilterMixer
     
@@ -35,7 +36,7 @@ struct FilterSectionView: View {
             if let filterIndex = model.filters.firstIndex(of: filter) {
                 if let operation = model.operations[safe: filterIndex] {
                     ForEach(filter.parameters) { parameter in
-                        FilterParameterView(operation: operation, parameter: parameter)
+                        FilterParameterView(operation: operation, parameter: parameter, isRegularSlider: isRegularSlider)
                     } // ForEach
                 } // if
             } // if
@@ -43,9 +44,10 @@ struct FilterSectionView: View {
     }
 }
 
-private struct FilterParameterView: View {
+struct FilterParameterView: View {
     var operation: ImageProcessingOperation
     var parameter: FilterParameter
+    var isRegularSlider = false
     
     @EnvironmentObject private var model: FilterMixer
     
@@ -54,7 +56,7 @@ private struct FilterParameterView: View {
         case .slider(let title, let range, let stepCount, let customGetter, let customSetter):
             HStack {
                 Text(title.camelCaseToReadableFormatted())
-                WheelSlider(value: Binding(get: {
+                let binding = Binding<Double>(get: {
                     if let customGetter {
                         Double(customGetter(operation))
                     } else if let operation = operation as? BasicOperation {
@@ -74,24 +76,36 @@ private struct FilterParameterView: View {
                         operation.setValue(Float($0), forKey: title)
                     }
                     model.processImage()
-                }), in: range, stepCount: stepCount ?? 50)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .offset(y: 6)
-                .overlay(alignment: .bottom) {
-                    Group {
-                        if let customGetter {
-                            Text(Double(customGetter(operation)).formatted())
-                        } else if let operation = operation as? BasicOperation {
-                            Text(Double(operation.uniformSettings[title]).formatted())
-                        } else if let operation = operation as? CIFilterOperation,
-                                  let floatValue = operation.value(forKey: title) as? Float {
-                            Text(Double(floatValue).formatted())
-                        }
+                })
+                
+                if isRegularSlider {
+                    Slider(value: binding, in: range) {
+                        Text(binding.wrappedValue.formatted())
+                    } minimumValueLabel: {
+                        Text(range.lowerBound.formatted())
+                    } maximumValueLabel: {
+                        Text(range.upperBound.formatted())
                     }
-                    .font(.caption2.bold())
-                    .foregroundStyle(.yellow.mix(with: .black, by: 0.25))
-                    .offset(y: 6)
+                } else {
+                    WheelSlider(value: binding, in: range, stepCount: stepCount ?? 50)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .offset(y: 6)
+                        .overlay(alignment: .bottom) {
+                            Group {
+                                if let customGetter {
+                                    Text(Double(customGetter(operation)).formatted())
+                                } else if let operation = operation as? BasicOperation {
+                                    Text(Double(operation.uniformSettings[title]).formatted())
+                                } else if let operation = operation as? CIFilterOperation,
+                                          let floatValue = operation.value(forKey: title) as? Float {
+                                    Text(Double(floatValue).formatted())
+                                }
+                            }
+                            .font(.caption2.bold())
+                            .foregroundStyle(.yellow.mix(with: .black, by: 0.25))
+                            .offset(y: 6)
+                        }
                 }
             } // HStack
         case .color(let title, let getter, let setter):
@@ -100,7 +114,7 @@ private struct FilterParameterView: View {
             }, set: {
                 setter(operation, $0)
                 model.processImage()
-            }))
+            }), isRegularSlider: isRegularSlider)
         case .position(let title, let getter, let setter):
             HStack {
                 Text(title.camelCaseToReadableFormatted())

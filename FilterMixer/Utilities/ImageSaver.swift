@@ -18,7 +18,17 @@ struct ImageSaver {
         do {
             try pngData.write(to: tempUrl)
             let controller = UIDocumentPickerViewController(forExporting: [tempUrl])
-            UIApplication.shared.keyWindow?.rootViewController?.present(controller, animated: true)
+            UIApplication.shared.topMostViewController?.present(controller, animated: true)
         } catch {}
+    }
+}
+
+private extension UIApplication {
+    var topMostViewController: UIViewController? {
+        var vc = keyWindow?.rootViewController
+        while let presented = vc?.presentedViewController {
+            vc = presented
+        }
+        return vc
     }
 }

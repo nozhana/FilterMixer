@@ -101,6 +101,9 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
     case ciBokehEffect
     case ciPixellate
     case ciHexagonalPixellate
+    case ciBumpDistortion
+    case ciDroste
+    case ciGlassLozenge
     
     var stylizedName: String {
         switch self {
@@ -354,11 +357,27 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
             [.slider(title: "scale", range: 0.1...60)]
         case .ciHexagonalPixellate:
             [.slider(title: "scale", range: 0.1...60)]
+        case .ciBumpDistortion:
+            [.slider(title: "scale", range: -5...5),
+             .slider(title: "radius", range: 0...1, customGetter: { ($0 as! CIBumpDistortionOperation).radius }, customSetter: { ($0 as! CIBumpDistortionOperation).radius = $1 }),
+             .position(title: "center", getter: { ($0 as! CIBumpDistortionOperation).center }, setter: { ($0 as! CIBumpDistortionOperation).center = $1 })]
+        case .ciDroste:
+            [.slider(title: "periodicity", range: 0...10),
+             .slider(title: "strands", range: 0...10),
+             .slider(title: "zoom", range: 0...10),
+             .slider(title: "rotation", range: 0...180, customGetter: { Float(($0 as! CIDrosteOperation).rotation.degrees) }, customSetter: { ($0 as! CIDrosteOperation).rotation = .degrees(Double($1)) }),
+             .position(title: "insetPoint1", getter: { ($0 as! CIDrosteOperation).insetPoint1 }, setter: { ($0 as! CIDrosteOperation).insetPoint1 = $1 }),
+             .position(title: "insetPoint0", getter: { ($0 as! CIDrosteOperation).insetPoint0 }, setter: { ($0 as! CIDrosteOperation).insetPoint0 = $1 })]
+        case .ciGlassLozenge:
+            [.slider(title: "refraction", range: 1...10),
+             .slider(title: "radius", range: 10...200),
+             .position(title: "point0", getter: { ($0 as! CIGlassLozengeOperation).point0 }, setter: { ($0 as! CIGlassLozengeOperation).point0 = $1 }),
+             .position(title: "point1", getter: { ($0 as! CIGlassLozengeOperation).point1 }, setter: { ($0 as! CIGlassLozengeOperation).point1 = $1 })]
         default: isLookupFilter ? [.slider(title: "intensity", range: 0...1, stepCount: 50)] : []
         }
     }
     
-    func makeOperation() -> ImageProcessingOperation {
+    func makeOperation(parameters: [String: Any] = [:]) -> ImageProcessingOperation {
         switch self {
         case .adaptiveThreshold: AdaptiveThreshold()
         case .brightness: BrightnessAdjustment()
@@ -448,6 +467,9 @@ enum Filter: String, Identifiable, Hashable, CaseIterable, Codable {
         case .ciBokehEffect: CIFilterOperation(.bokehBlur())
         case .ciPixellate: CIFilterOperation(.pixellate())
         case .ciHexagonalPixellate: CIFilterOperation(.hexagonalPixellate())
+        case .ciBumpDistortion: CIBumpDistortionOperation(extent: (parameters["extent"] as? CGSize) ?? .zero)
+        case .ciDroste: CIDrosteOperation(extent: (parameters["extent"] as? CGSize) ?? .zero)
+        case .ciGlassLozenge: CIGlassLozengeOperation(extent: (parameters["extent"] as? CGSize) ?? .zero)
         }
     }
 }

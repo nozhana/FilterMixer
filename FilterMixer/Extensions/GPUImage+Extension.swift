@@ -7,11 +7,18 @@
 
 import Foundation
 import GPUImage
+import class UIKit.UIImage
 
 extension LookupFilter {
     convenience init(_ imageName: String) {
         self.init()
         ({ lookupImage = PictureInput(imageName: "\(imageName).png") })()
+        ({ intensity = 1 })()
+    }
+    
+    convenience init(_ image: UIImage) {
+        self.init()
+        ({ lookupImage = PictureInput(image: image) })()
         ({ intensity = 1 })()
     }
 }

@@ -264,6 +264,7 @@
 				DEVELOPMENT_TEAM = K79BRFXPP9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "This is for filtering your live feed.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "This is for saving filtered images to your photo library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "This is for loading photos into the FilterMixer.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -295,6 +296,7 @@
 				DEVELOPMENT_TEAM = K79BRFXPP9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "This is for filtering your live feed.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "This is for saving filtered images to your photo library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "This is for loading photos into the FilterMixer.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

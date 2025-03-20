@@ -1,5 +1,5 @@
 //
-//  CGSize+Size.swift
+//  CGSize+GPUImage.swift
 //  FilterMixer
 //
 //  Created by Nozhan Amiri on 1/4/25.
